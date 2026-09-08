@@ -1,5 +1,6 @@
 import type { ClassDef, ClassId, HeroDef, ItemDef, StrategyDef, TerrainDef, TerrainId } from '../engine/types'
 import { classes } from './classes'
+import { heroes } from './heroes'
 import { items } from './items'
 import { strategies } from './strategies'
 import { terrains } from './terrains'
@@ -17,5 +18,5 @@ export const gameData: GameData = {
   terrains,
   strategies,
   items,
-  heroes: {},
+  heroes,
 }
