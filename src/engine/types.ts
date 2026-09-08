@@ -193,6 +193,7 @@ export type GameEvent =
   | { type: 'itemUsed'; unitId: string; targetId: string; itemId: string }
   | { type: 'treasureFound'; unitId: string; itemId: string }
   | { type: 'reinforcementsArrived'; unitIds: string[] }
+  | { type: 'reinforcementDropped'; unitId: string }
   | { type: 'dialogueTriggered'; dialogueId: string }
   | { type: 'battleWon' }
   | { type: 'battleLost' }

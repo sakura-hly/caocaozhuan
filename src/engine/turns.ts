@@ -1,8 +1,10 @@
 import type { ApplyResult, BattleState, Cell, ClassId, Faction } from './types'
 import { begin, finish, type Draft } from './internal'
-import { rngNext } from './rng'
 import { moveCostFor } from './movement'
 import { terrains } from '../data/terrains'
+
+const WEATHERS = ['sunny', 'cloudy', 'rainy'] as const
+const RANDOM_WEATHER_CHANCE = 0.2
 
 export function doEndTurn(state: BattleState): ApplyResult {
   const d = begin(state)
@@ -38,29 +40,32 @@ function newRound(d: Draft): void {
       d.events.push({ type: 'weatherChanged', weather: scripted.weather })
     }
   } else {
-    const r = rngNext(d.state.rngState)
-    d.state.rngState = r.nextState
-    if (r.value < 0.2) {
-      const others = (['sunny', 'cloudy', 'rainy'] as const).filter((w) => w !== d.state.weather)
-      const r2 = rngNext(d.state.rngState)
-      d.state.rngState = r2.nextState
-      const w = others[Math.floor(r2.value * others.length)] ?? others[0]
+    if (d.draw() < RANDOM_WEATHER_CHANCE) {
+      const others = WEATHERS.filter((w) => w !== d.state.weather)
+      const w = others[Math.floor(d.draw() * others.length)] ?? others[0]
       d.state.weather = w
       d.events.push({ type: 'weatherChanged', weather: w })
     }
   }
-  // 增援登场（落点被占时找相邻可站格）
+  // 增援登场：落点须界内/可通行/未被占，否则回退相邻格；id 重复或无处可落则丢弃并发事件
   for (const r of d.state.reinforcements) {
     if (r.turn !== d.state.turn) continue
     const ids: string[] = []
     for (const e of r.entries) {
+      if (d.state.units.some((u) => u.id === e.unit.id)) {
+        d.events.push({ type: 'reinforcementDropped', unitId: e.unit.id })
+        continue
+      }
       let cell = e.at
-      if (occupied(d, cell)) {
+      if (!placeable(d, cell, e.unit.classId)) {
         const alt = [
           { x: cell.x + 1, y: cell.y }, { x: cell.x - 1, y: cell.y },
           { x: cell.x, y: cell.y + 1 }, { x: cell.x, y: cell.y - 1 },
-        ].find((c) => inBounds(d, c) && !occupied(d, c) && walkable(d, c, e.unit.classId))
-        if (!alt) continue
+        ].find((c) => placeable(d, c, e.unit.classId))
+        if (!alt) {
+          d.events.push({ type: 'reinforcementDropped', unitId: e.unit.id })
+          continue
+        }
         cell = alt
       }
       const unit = structuredClone(e.unit)
@@ -89,6 +94,10 @@ function startFactionTurn(d: Draft, f: Faction): void {
   }
 }
 
+/** 增援落点三条件：界内 + 该兵种可通行 + 未被占。 */
+function placeable(d: Draft, c: Cell, classId: ClassId): boolean {
+  return inBounds(d, c) && walkable(d, c, classId) && !occupied(d, c)
+}
 function occupied(d: Draft, c: Cell): boolean {
   return d.state.units.some((u) => u.alive && u.pos.x === c.x && u.pos.y === c.y)
 }

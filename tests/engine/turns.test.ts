@@ -67,4 +67,103 @@ describe('回合推进', () => {
     expect(p.length).toBe(1)
     expect(p[0].turns).toBe(2)
   })
+
+  it('无天气脚本时 20% 概率随机换天气，同 seed 回放一致', () => {
+    // seed=7：首轮 draw=0.0117 < 0.2 → 触发；第二次 draw=0.0620 → 选 cloudy
+    const run = () => {
+      const s = mkState({
+        rngState: 7,
+        units: [
+          mkUnit({ id: 'p1', acted: true, moved: true }),
+          mkUnit({ id: 'e1', faction: 'enemy', pos: { x: 6, y: 5 } }),
+        ],
+      })
+      const r1 = apply(s, { type: 'endTurn' }, gameData)
+      return apply(r1.ok ? r1.state : s, { type: 'endTurn' }, gameData)
+    }
+    const a = run()
+    const b = run()
+    expect(a.ok && a.state.weather).toBe('cloudy')
+    expect(a.ok && a.events.some((e) => e.type === 'weatherChanged' && e.weather === 'cloudy')).toBe(true)
+    // 回放承诺：同 seed 两次运行事件与 rngState 完全一致
+    expect(a.ok && JSON.stringify(a.events)).toBe(b.ok && JSON.stringify(b.events))
+    expect(a.ok && a.state.rngState).toBe(b.ok && b.state.rngState)
+  })
+
+  it('增援落点被占 → 回退到唯一可用相邻格', () => {
+    // (7,5) 是 8×6 地图右下角：界内相邻格只有 (6,5) 与 (7,4)。
+    // at(7,5) 被 e1 占据、(6,5) 被 o1 占据 → 唯一可用相邻格是 (7,4)
+    const s = mkState({
+      units: [
+        mkUnit({ id: 'p1', acted: true, moved: true }),
+        mkUnit({ id: 'e1', faction: 'enemy', pos: { x: 7, y: 5 }, acted: true, moved: true }),
+        mkUnit({ id: 'o1', faction: 'enemy', pos: { x: 6, y: 5 }, acted: true, moved: true }),
+      ],
+      reinforcements: [{ turn: 2, entries: [{ unit: mkUnit({ id: 'r1', faction: 'enemy' }), at: { x: 7, y: 5 } }] }],
+    })
+    const r1 = apply(s, { type: 'endTurn' }, gameData)
+    const r2 = apply(r1.ok ? r1.state : s, { type: 'endTurn' }, gameData)
+    expect(r2.ok).toBe(true)
+    if (!r2.ok) return
+    const u = r2.state.units.find((x) => x.id === 'r1')
+    expect(u).toBeDefined()
+    expect(u!.pos).toEqual({ x: 7, y: 4 })
+    expect(r2.events.some((e) => e.type === 'reinforcementsArrived' && e.unitIds.includes('r1'))).toBe(true)
+  })
+
+  it('增援落点及四邻全被占 → reinforcementDropped，不入场', () => {
+    const blockers = [
+      { x: 4, y: 3 }, // 占住 at
+      { x: 5, y: 3 }, { x: 3, y: 3 }, { x: 4, y: 4 }, { x: 4, y: 2 }, // 四邻
+    ].map((p, i) => mkUnit({ id: 'o' + i, faction: 'enemy', pos: p }))
+    const s = mkState({
+      units: [
+        mkUnit({ id: 'p1', acted: true, moved: true }),
+        mkUnit({ id: 'e1', faction: 'enemy', pos: { x: 6, y: 5 }, acted: true, moved: true }),
+        ...blockers,
+      ],
+      reinforcements: [{ turn: 2, entries: [{ unit: mkUnit({ id: 'r1', faction: 'enemy' }), at: { x: 4, y: 3 } }] }],
+    })
+    const r1 = apply(s, { type: 'endTurn' }, gameData)
+    const r2 = apply(r1.ok ? r1.state : s, { type: 'endTurn' }, gameData)
+    expect(r2.ok).toBe(true)
+    if (!r2.ok) return
+    expect(r2.state.units.some((u) => u.id === 'r1')).toBe(false)
+    expect(r2.events.some((e) => e.type === 'reinforcementDropped' && e.unitId === 'r1')).toBe(true)
+    expect(r2.events.some((e) => e.type === 'reinforcementsArrived' && e.unitIds.includes('r1'))).toBe(false)
+  })
+
+  it('增援与场上同 id（含已亡）→ reinforcementDropped，不重复入场', () => {
+    const s = mkState({
+      units: [
+        mkUnit({ id: 'p1', acted: true, moved: true }),
+        mkUnit({ id: 'e1', faction: 'enemy', pos: { x: 6, y: 5 }, acted: true, moved: true }),
+        mkUnit({ id: 'r1', faction: 'enemy', pos: { x: 7, y: 5 }, alive: false }),
+      ],
+      reinforcements: [{ turn: 2, entries: [{ unit: mkUnit({ id: 'r1', faction: 'enemy' }), at: { x: 7, y: 5 } }] }],
+    })
+    const r1 = apply(s, { type: 'endTurn' }, gameData)
+    const r2 = apply(r1.ok ? r1.state : s, { type: 'endTurn' }, gameData)
+    expect(r2.ok).toBe(true)
+    if (!r2.ok) return
+    expect(r2.state.units.filter((u) => u.id === 'r1')).toHaveLength(1)
+    expect(r2.state.units.find((u) => u.id === 'r1')!.alive).toBe(false)
+    expect(r2.events.some((e) => e.type === 'reinforcementDropped' && e.unitId === 'r1')).toBe(true)
+  })
+
+  it('眩晕 + 到期状态：己方回合开始置 acted，到期状态清除', () => {
+    const s = mkState({
+      units: [
+        mkUnit({ id: 'p1', statuses: [{ kind: 'stun', turns: 1 }, { kind: 'defdown', turns: 1 }] }),
+        mkUnit({ id: 'e1', faction: 'enemy', pos: { x: 6, y: 5 } }),
+      ],
+      factionIndex: 1,
+    })
+    const r = apply(s, { type: 'endTurn' }, gameData) // enemy→player(新轮)
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    const p = r.state.units[0]
+    expect(p.acted).toBe(true)
+    expect(p.statuses).toEqual([])
+  })
 })
