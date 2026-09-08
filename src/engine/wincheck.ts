@@ -4,7 +4,7 @@ export interface BattleVerdict { won: boolean; lost: boolean }
 
 /**
  * 胜负判定（spec §3.8）：
- * 失败 = 我方全灭 / 君主阵亡 / 超过回合上限
+ * 失败 = 我方全灭 / 玩家君主阵亡（敌方君主不判负） / 超过回合上限
  * 胜利 = 按战役数据条件：annihilate / killCommander / survive / reach
  */
 export function evaluate(s: BattleState): BattleVerdict {
