@@ -30,6 +30,7 @@ describe('awardExp', () => {
     expect(d.state.units[0].exp).toBe(0)
     expect(d.events.some((e) => e.type === 'expGained')).toBe(true)
     expect(d.events.some((e) => e.type === 'levelUp')).toBe(true)
+    expect(d.state.units[0].hp).toBe(d.state.units[0].base.hp)
   })
   it('敌方单位不获得经验', () => {
     const e = mkUnit({ id: 'e1', faction: 'enemy', pos: { x: 6, y: 5 } })

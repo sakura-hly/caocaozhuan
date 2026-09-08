@@ -25,12 +25,12 @@ describe('attack 指令', () => {
     expect(r.events.some((ev) => ev.type === 'expGained' && ev.unitId === 'p1')).toBe(true)
   })
 
-  it('防守方存活且在射程内 → 触发反击（p1 掉血）', () => {
+  it('防守方存活且在射程内 → 触发反击（attackLaunched 含 counter 打击）', () => {
     const r = apply(states(), { type: 'attack', unitId: 'p1', targetId: 'e1' }, gameData)
     expect(r.ok).toBe(true)
     if (!r.ok) return
-    const p1 = r.state.units.find((u) => u.id === 'p1')!
-    expect(p1.hp).toBeLessThan(60)
+    const launched = r.events.find((e) => e.type === 'attackLaunched')
+    expect(launched && launched.type === 'attackLaunched' && launched.hits.some((h) => h.counter)).toBe(true)
     expect(r.events.filter((e) => e.type === 'attackLaunched').length).toBe(1) // 事件合并一条，内含反击
   })
 
@@ -58,6 +58,8 @@ describe('attack 指令', () => {
     expect(r.ok).toBe(true)
     if (!r.ok) return
     expect(r.events.some((ev) => ev.type === 'unitDied' && ev.unitId === 'e1')).toBe(true)
+    const hpc = r.events.find((ev) => ev.type === 'hpChanged' && ev.unitId === 'e1')
+    expect(hpc && hpc.type === 'hpChanged' && hpc.delta).toBe(-5) // hp=5 起步，overkill 只扣 5
     expect(r.state.finished).toBe('won')
   })
 

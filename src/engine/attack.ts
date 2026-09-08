@@ -55,8 +55,9 @@ function strike(d: Draft, attacker: Unit, defender: Unit, data: GameData, counte
     if (critical) dmg *= 2
     if (counter) dmg *= 0.8
     dmg = Math.round(dmg)
+    const before = defender.hp
     defender.hp = Math.max(0, defender.hp - dmg)
-    d.events.push({ type: 'hpChanged', unitId: defender.id, hp: defender.hp, delta: -dmg })
+    d.events.push({ type: 'hpChanged', unitId: defender.id, hp: defender.hp, delta: defender.hp - before })
     if (defender.hp <= 0 && defender.alive) killUnit(d, defender, attacker.id)
     if (attacker.faction === 'player') {
       awardExp(d, attacker.id, EXP_HIT, data)

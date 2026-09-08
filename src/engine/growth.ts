@@ -35,6 +35,8 @@ export function awardExp(d: Draft, unitId: string, amount: number, data: GameDat
     const { gains, nextState } = rollLevelUp(data.classes[u.classId].growth, d.state.rngState)
     d.state.rngState = nextState
     for (const [k, v] of Object.entries(gains) as Array<[keyof Stats, number]>) u.base[k] += v
+    if (gains.hp) u.hp += gains.hp
+    if (gains.mp) u.mp += gains.mp
     d.events.push({ type: 'levelUp', unitId: u.id, level: u.level, gains })
   }
 }
