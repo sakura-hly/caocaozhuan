@@ -2,6 +2,7 @@ import type { ApplyResult, BattleDef, BattleState, Command } from './types'
 import type { GameData } from '../data'
 import { doMove, doWait } from './move'
 import { doAttack } from './attack'
+import { doCast, doUseItem } from './magic'
 import { doEndTurn } from './turns'
 
 export function initBattle(def: BattleDef, rngSeed: number): BattleState {
@@ -33,8 +34,8 @@ export function apply(state: BattleState, cmd: Command, data: GameData): ApplyRe
   switch (cmd.type) {
     case 'move': return doMove(state, cmd, data)
     case 'attack': return doAttack(state, cmd, data)
-    case 'cast': return { ok: false, error: { code: 'CANNOT_TARGET', reason: 'cast 未实现（Task 9）' } }
-    case 'useItem': return { ok: false, error: { code: 'CANNOT_TARGET', reason: 'useItem 未实现（Task 9）' } }
+    case 'cast': return doCast(state, cmd, data)
+    case 'useItem': return doUseItem(state, cmd, data)
     case 'wait': return doWait(state, cmd)
     case 'endTurn': return doEndTurn(state)
   }
