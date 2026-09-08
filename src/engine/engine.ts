@@ -1,6 +1,7 @@
 import type { ApplyResult, BattleDef, BattleState, Command } from './types'
 import type { GameData } from '../data'
 import { doMove, doWait } from './move'
+import { doAttack } from './attack'
 import { doEndTurn } from './turns'
 
 export function initBattle(def: BattleDef, rngSeed: number): BattleState {
@@ -31,7 +32,7 @@ export function apply(state: BattleState, cmd: Command, data: GameData): ApplyRe
   if (state.finished) return { ok: false, error: { code: 'BATTLE_ENDED' } }
   switch (cmd.type) {
     case 'move': return doMove(state, cmd, data)
-    case 'attack': return { ok: false, error: { code: 'CANNOT_TARGET', reason: 'attack 未实现（Task 8）' } }
+    case 'attack': return doAttack(state, cmd, data)
     case 'cast': return { ok: false, error: { code: 'CANNOT_TARGET', reason: 'cast 未实现（Task 9）' } }
     case 'useItem': return { ok: false, error: { code: 'CANNOT_TARGET', reason: 'useItem 未实现（Task 9）' } }
     case 'wait': return doWait(state, cmd)
