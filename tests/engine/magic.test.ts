@@ -19,10 +19,10 @@ describe('cast 指令', () => {
     const s1 = r.state.units.find((u) => u.id === 's1')!
     const e1 = r.state.units.find((u) => u.id === 'e1')!
     expect(s1.mp).toBe(30 - 6)
-    expect(e1.hp).toBeLessThan(60)
+    expect(e1.hp).toBe(16) // 伤害公式确定值：30 + 20*0.8 - 5*0.4 = 44
     expect(s1.acted).toBe(true)
     expect(r.events.some((ev) => ev.type === 'spellCast')).toBe(true)
-    expect(r.events.some((ev) => ev.type === 'hpChanged' && ev.unitId === 'e1')).toBe(true)
+    expect(r.events.some((ev) => ev.type === 'hpChanged' && ev.unitId === 'e1' && ev.delta === -44)).toBe(true)
     expect(r.events.some((ev) => ev.type === 'expGained' && ev.unitId === 's1')).toBe(true)
   })
 
@@ -70,6 +70,26 @@ describe('cast 指令', () => {
     if (!r1.ok) return
     const r2 = apply(r1.state, { type: 'endTurn' }, gameData)
     expect(r2.ok && r2.state.units.find((u) => u.id === 'e1')!.acted).toBe(true)
+  })
+
+  it('水淹 burst：只影响敌方，友军不受波及', () => {
+    const s = mkState({
+      units: [
+        mkUnit({ id: 's1', classId: 'strategist', pos: { x: 2, y: 2 }, base: { hp: 40, mp: 30, atk: 5, def: 5, spirit: 20, agi: 8 }, mp: 30 }),
+        mkUnit({ id: 'e1', faction: 'enemy', pos: { x: 4, y: 2 }, base: { hp: 60, mp: 0, atk: 10, def: 8, spirit: 5, agi: 8 } }),
+        mkUnit({ id: 'p2', pos: { x: 4, y: 3 } }), // 与目标格相邻的我方单位
+      ],
+    })
+    const r = apply(s, { type: 'cast', unitId: 's1', strategyId: 'shuiyan', target: { x: 4, y: 2 } }, gameData)
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.state.units.find((u) => u.id === 'e1')!.hp).toBeLessThan(60)
+    expect(r.state.units.find((u) => u.id === 'p2')!.hp).toBe(50)
+  })
+
+  it('超射程 → NOT_IN_RANGE', () => {
+    const r = apply(castState(), { type: 'cast', unitId: 's1', strategyId: 'huoshi', target: { x: 6, y: 2 } }, gameData)
+    expect(r).toEqual({ ok: false, error: { code: 'NOT_IN_RANGE', unitId: 's1', targetId: '6,2' } })
   })
 })
 

@@ -1,6 +1,6 @@
 import type { ApplyResult, BattleState, Command, StrategyDef, Unit } from './types'
 import type { GameData } from '../data'
-import { begin, effectiveStats, ensureActable, findUnit, finish, hostile, killUnit, type Draft } from './internal'
+import { begin, effectiveStats, ensureActable, findUnit, finish, hostile, killUnit, unitAt, type Draft } from './internal'
 import { healAmount, spellDamage } from './combat'
 import { castableInWeather, shapeCells } from './spells'
 import { manhattan } from './movement'
@@ -30,7 +30,7 @@ export function doCast(state: BattleState, cmd: Extract<Command, { type: 'cast' 
   const h = d.state.map.length, w = d.state.map[0].length
   for (const c of shapeCells(cmd.target, s.shape)) {
     if (c.x < 0 || c.y < 0 || c.x >= w || c.y >= h) continue
-    const target = d.state.units.find((u) => u.alive && u.pos.x === c.x && u.pos.y === c.y)
+    const target = unitAt(d.state, c)
     if (!target) continue
     if (s.kind === 'attack' || s.kind === 'debuff') {
       if (!hostile(C.faction, target.faction)) continue
@@ -60,11 +60,13 @@ function applySpellEffect(d: Draft, C: Unit, target: Unit, s: StrategyDef, data:
       if (!target.alive) awardExp(d, C.id, EXP_KILL_BONUS, data)
     }
   } else if (s.kind === 'heal') {
-    const amount = Math.min(healAmount(s.power, cS.spirit), target.base.hp - target.hp)
+    const maxHp = effectiveStats(target, data).hp
+    const amount = Math.min(healAmount(s.power, cS.spirit), maxHp - target.hp)
     if (amount > 0) {
       target.hp += amount
       d.events.push({ type: 'hpChanged', unitId: target.id, hp: target.hp, delta: amount })
     }
+    // 满血施放仍发 EXP_HEAL：保留原作行为，有意设计
     if (C.faction === 'player') awardExp(d, C.id, EXP_HEAL, data)
   } else {
     const eff = s.effect!
@@ -85,15 +87,20 @@ export function doUseItem(state: BattleState, cmd: Extract<Command, { type: 'use
   const d = begin(state)
   const U = findUnit(d.state, cmd.unitId)!
   U.items.splice(U.items.indexOf(cmd.itemId), 1)
+  const eff = effectiveStats(U, data)
   if (item.healHp) {
-    const amount = Math.min(item.healHp, U.base.hp - U.hp)
-    U.hp += amount
-    d.events.push({ type: 'hpChanged', unitId: U.id, hp: U.hp, delta: amount })
+    const amount = Math.min(item.healHp, eff.hp - U.hp)
+    if (amount > 0) {
+      U.hp += amount
+      d.events.push({ type: 'hpChanged', unitId: U.id, hp: U.hp, delta: amount })
+    }
   }
   if (item.healMp) {
-    const amount = Math.min(item.healMp, U.base.mp - U.mp)
-    U.mp += amount
-    d.events.push({ type: 'mpChanged', unitId: U.id, mp: U.mp, delta: amount })
+    const amount = Math.min(item.healMp, eff.mp - U.mp)
+    if (amount > 0) {
+      U.mp += amount
+      d.events.push({ type: 'mpChanged', unitId: U.id, mp: U.mp, delta: amount })
+    }
   }
   d.events.push({ type: 'itemUsed', unitId: U.id, targetId: cmd.targetId, itemId: cmd.itemId })
   U.acted = true
