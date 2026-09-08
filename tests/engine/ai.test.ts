@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
+import type { BattleState, Command } from '../../src/engine/types'
 import { decideUnitAction } from '../../src/engine/ai'
+import { apply } from '../../src/engine/engine'
 import { gameData, mkState, mkUnit } from './helpers'
 
 describe('decideUnitAction', () => {
@@ -24,7 +26,7 @@ describe('decideUnitAction', () => {
     const s = mkState({
       units: [
         mkUnit({ id: 'ai1', faction: 'enemy', classId: 'infantry', pos: { x: 0, y: 0 } }),
-        mkUnit({ id: 'p1', pos: { x: 7, y: 5 }, acted: true }),
+        mkUnit({ id: 'p1', pos: { x: 7, y: 5 } }),
       ],
     })
     const cmds = decideUnitAction(s, 'ai1', gameData)
@@ -45,7 +47,7 @@ describe('decideUnitAction', () => {
           base: { hp: 40, mp: 30, atk: 4, def: 4, spirit: 18, agi: 8 }, mp: 30 }),
         mkUnit({ id: 'e_inf', faction: 'enemy', classId: 'infantry', pos: { x: 4, y: 5 }, hp: 20,
           base: { hp: 60, mp: 0, atk: 10, def: 10, spirit: 4, agi: 8 } }),
-        mkUnit({ id: 'p1', pos: { x: 0, y: 0 }, acted: true }), // 远离，打不到
+        mkUnit({ id: 'p1', pos: { x: 0, y: 0 } }), // 远离，打不到
       ],
     })
     const cmds = decideUnitAction(s, 'e_tao', gameData)
@@ -59,10 +61,55 @@ describe('decideUnitAction', () => {
       units: [
         mkUnit({ id: 'ai1', faction: 'enemy', pos: { x: 5, y: 5 }, acted: true }),
         mkUnit({ id: 'dead', faction: 'enemy', pos: { x: 5, y: 4 }, alive: false }),
-        mkUnit({ id: 'p1', pos: { x: 0, y: 0 }, acted: true }),
+        mkUnit({ id: 'p1', pos: { x: 0, y: 0 } }),
       ],
     })
     expect(decideUnitAction(s, 'ai1', gameData)).toEqual([])
     expect(decideUnitAction(s, 'dead', gameData)).toEqual([])
+  })
+})
+
+/** 契约：AI 输出的指令序列必须被引擎逐条接受，且链尾单位完成行动（AI 的校验谓词不得偏离引擎）。 */
+function applyAll(s: BattleState, unitId: string, cmds: Command[]): void {
+  let cur = s
+  for (const cmd of cmds) {
+    const r = apply(cur, cmd, gameData)
+    expect(r.ok, `指令被引擎拒绝: ${JSON.stringify(cmd)}`).toBe(true)
+    if (r.ok) cur = r.state
+  }
+  const actor = cur.units.find((u) => u.id === unitId)
+  expect(actor?.acted).toBe(true)
+}
+
+describe('decideUnitAction · apply 契约', () => {
+  it('物理链：先移后攻的指令逐条 apply 全部 ok 且链尾 acted', () => {
+    const s = mkState({
+      factionIndex: 1, // 敌方回合
+      units: [
+        mkUnit({ id: 'ai1', faction: 'enemy', classId: 'cavalry', pos: { x: 4, y: 2 },
+          base: { hp: 60, mp: 0, atk: 20, def: 8, spirit: 4, agi: 10 } }),
+        mkUnit({ id: 'p1', pos: { x: 6, y: 2 }, // 距离 2，骑兵射程 1 → 逼出先移后攻
+          base: { hp: 60, mp: 0, atk: 10, def: 4, spirit: 4, agi: 6 } }),
+      ],
+    })
+    const cmds = decideUnitAction(s, 'ai1', gameData)
+    expect(cmds.some((c) => c.type === 'attack')).toBe(true)
+    applyAll(s, 'ai1', cmds)
+  })
+
+  it('施法链：治疗指令 [可选 move] + cast 全链 ok 且链尾 acted', () => {
+    const s = mkState({
+      factionIndex: 1, // 敌方回合
+      units: [
+        mkUnit({ id: 'e_tao', faction: 'enemy', classId: 'taoist', pos: { x: 5, y: 5 },
+          base: { hp: 40, mp: 30, atk: 4, def: 4, spirit: 18, agi: 8 }, mp: 30 }),
+        mkUnit({ id: 'e_inf', faction: 'enemy', classId: 'infantry', pos: { x: 4, y: 5 }, hp: 20,
+          base: { hp: 60, mp: 0, atk: 10, def: 10, spirit: 4, agi: 8 } }),
+        mkUnit({ id: 'p1', pos: { x: 0, y: 0 } }), // 远离，打不到
+      ],
+    })
+    const cmds = decideUnitAction(s, 'e_tao', gameData)
+    expect(cmds.some((c) => c.type === 'cast')).toBe(true)
+    applyAll(s, 'e_tao', cmds)
   })
 })

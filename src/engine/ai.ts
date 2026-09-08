@@ -15,6 +15,7 @@ interface Option { score: number; cmds: Command[] }
 export function decideUnitAction(state: BattleState, unitId: string, data: GameData): Command[] {
   const u = findUnit(state, unitId)
   if (!u || !u.alive || u.acted) return []
+  // 正常回合流程下 stun 单位已被 turns.ts 的 startFactionTurn 置 acted=true 走早退；此分支服务传入未经 startFactionTurn 状态的直接调用方
   if (u.statuses.some((st) => st.kind === 'stun')) return [{ type: 'wait', unitId }]
   const foes = state.units.filter((t) => t.alive && hostile(u.faction, t.faction))
   if (foes.length === 0) return [{ type: 'wait', unitId }]
