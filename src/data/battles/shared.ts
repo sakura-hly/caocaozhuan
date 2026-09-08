@@ -21,6 +21,7 @@ export function heroUnit(
   o: { level?: number; equipment?: Partial<Record<ItemSlot, string>>; items?: string[] } = {},
 ): Unit {
   const h = heroes[heroId]
+  if (!h) throw new Error(`未知武将: ${heroId}`)
   return {
     id: heroId, heroId, name: h.name, faction, classId: h.classId,
     level: o.level ?? 1, exp: 0, base: { ...h.base }, hp: h.base.hp, mp: h.base.mp,
@@ -40,7 +41,8 @@ export function mobUnit(
   }
 }
 
-/** 战役数据静态校验（加载期调用），返回错误列表（空 = 合法）。 */
+/** 战役数据静态校验（加载期调用），返回错误列表（空 = 合法）。
+ * 带「告警：」前缀的条目为建议性提示（战役仍合法），调用方可按前缀过滤；空数组 = 无任何错误或告警。 */
 export function validateBattleDef(def: BattleDef, data: GameData): string[] {
   const errs: string[] = []
   const h = def.map.length
@@ -51,7 +53,8 @@ export function validateBattleDef(def: BattleDef, data: GameData): string[] {
   const seen = new Set<string>()
   const checkPos = (u: Unit, c: Cell, tag: string, overlap: boolean) => {
     if (!inBounds(c)) { errs.push(`${tag} 位置越界 (${c.x},${c.y})`); return }
-    const t = def.map[c.y][c.x]
+    const t = def.map[c.y]?.[c.x]
+    if (t === undefined) return // 参差短行：宽度错误已在上方收集，此处防崩不重复报
     if (!Number.isFinite(moveCostFor(data.terrains[t], u.classId))) errs.push(`${tag} 站在不可通行地形 ${t}`)
     const k = `${c.x},${c.y}`
     if (overlap) {
@@ -79,20 +82,40 @@ export function validateBattleDef(def: BattleDef, data: GameData): string[] {
     if (r.turn < 2) errs.push(`增援回合数应 ≥2（turn=${r.turn}）`)
     r.entries.forEach((e) => checkPos(e.unit, e.at, `增援 ${e.unit.id}`, false))
   })
-  def.treasureCells.forEach((t) => { if (!inBounds(t.cell)) errs.push(`宝物格越界 (${t.cell.x},${t.cell.y})`) })
+  def.treasureCells.forEach((t) => {
+    if (!inBounds(t.cell)) errs.push(`宝物格越界 (${t.cell.x},${t.cell.y})`)
+    if (!data.items[t.itemId]) errs.push(`宝物格引用未知道具 ${t.itemId}`)
+  })
   if (def.win.kind === 'killCommander' || def.win.kind === 'reach') {
     const id = def.win.unitId
     const inField = def.units.some((u) => u.id === id)
     const inReinf = def.reinforcements.some((r) => r.entries.some((e) => e.unit.id === id))
     if (!inField && !inReinf) errs.push(`胜利条件引用不存在的单位 ${id}`)
+    const target = def.units.find((u) => u.id === id) ?? def.reinforcements.flatMap((r) => r.entries.map((e) => e.unit)).find((u) => u.id === id)
     // 【勘误 2】击破目标应为敌方阵营（防数据 bug 导致己方单位阵亡判胜）
     if (def.win.kind === 'killCommander') {
-      const target = def.units.find((u) => u.id === id) ?? def.reinforcements.flatMap((r) => r.entries.map((e) => e.unit)).find((u) => u.id === id)
       if (target && target.faction !== 'enemy') errs.push(`击破目标 ${id} 应为敌方阵营（当前 ${target.faction}）`)
+    }
+    // 抵达格校验：越界，或目标兵种在该格不可通行
+    if (def.win.kind === 'reach') {
+      if (!inBounds(def.win.cell)) {
+        errs.push(`胜利条件抵达格越界 (${def.win.cell.x},${def.win.cell.y})`)
+      } else if (target) {
+        const t = def.map[def.win.cell.y]?.[def.win.cell.x]
+        if (t === undefined || !Number.isFinite(moveCostFor(data.terrains[t], target.classId))) {
+          errs.push(`胜利条件抵达格不可达 (${def.win.cell.x},${def.win.cell.y})`)
+        }
+      }
     }
     // 【勘误 3】目标仅来自增援时告警（增援落点冲突被丢弃则战役不可胜）
     if (!inField && inReinf) errs.push(`告警：胜利目标 ${id} 仅来自增援（若增援被丢弃，战役将不可胜）`)
   }
+  def.dialogues.forEach((trig) => {
+    if (trig.onDeathOf === undefined) return
+    const inField = def.units.some((u) => u.id === trig.onDeathOf)
+    const inReinf = def.reinforcements.some((r) => r.entries.some((e) => e.unit.id === trig.onDeathOf))
+    if (!inField && !inReinf) errs.push(`对话触发引用不存在的单位 ${trig.onDeathOf}`)
+  })
   if (def.win.kind === 'survive' && def.win.untilTurn >= def.maxTurns) {
     errs.push(`坚守 ${def.win.untilTurn} 回合必须小于回合上限 ${def.maxTurns}`)
   }

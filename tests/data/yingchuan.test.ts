@@ -13,6 +13,8 @@ describe('颍川之战', () => {
     expect(yingchuan.map[0].length).toBe(16)
     expect(yingchuan.units.filter((u) => u.faction === 'player').length).toBe(5)
     expect(yingchuan.units.filter((u) => u.faction === 'enemy').length).toBe(9)
+    // 【勘误 4】结构锁：防张梁兵种回退为 strategist
+    expect(yingchuan.units.find((u) => u.id === 'zl')?.classId).toBe('taoist')
   })
   it('第 3 回合增援 2 人；对话触发都有文本', () => {
     expect(yingchuan.reinforcements.find((r) => r.turn === 3)?.entries.length).toBe(2)
@@ -30,5 +32,21 @@ describe('颍川之战', () => {
     const errs = validateBattleDef(broken, gameData)
     expect(errs.some((e) => e.includes('越界'))).toBe(true)
     expect(errs.some((e) => e.includes('坚守'))).toBe(true)
+  })
+  it('勘误负向：单位与增援 id 重复被拦截', () => {
+    const r = yingchuan.reinforcements[0]
+    const dup: BattleDef = {
+      ...yingchuan,
+      reinforcements: [{ ...r, entries: [{ ...r.entries[0], unit: { ...r.entries[0].unit, id: 'e1' } }] }],
+    }
+    expect(validateBattleDef(dup, gameData).some((e) => e.includes('单位 id 重复'))).toBe(true)
+  })
+  it('勘误负向：击破目标为我方单位被拦截', () => {
+    const bad: BattleDef = { ...yingchuan, win: { kind: 'killCommander', unitId: 'caocao' } }
+    expect(validateBattleDef(bad, gameData).some((e) => e.includes('应为敌方阵营'))).toBe(true)
+  })
+  it('勘误负向：击破目标仅来自增援时告警', () => {
+    const warn: BattleDef = { ...yingchuan, win: { kind: 'killCommander', unitId: 'r1' } }
+    expect(validateBattleDef(warn, gameData).some((e) => e.includes('仅来自增援'))).toBe(true)
   })
 })
