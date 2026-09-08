@@ -16,7 +16,7 @@ const defs: ItemDef[] = [
   { id: 'leather_shield', name: '皮盾', kind: 'accessory', bonuses: { def: 2 }, desc: '皮质圆盾' },
   { id: 'dilu_horse', name: '的卢', kind: 'accessory', bonuses: { move: 2 }, desc: '宝物：跃檀溪的骏马' },
   { id: 'chitu_horse', name: '赤兔马', kind: 'accessory', bonuses: { move: 3 }, allowedClasses: ['cavalry'], desc: '宝物：人中吕布，马中赤兔' },
-  { id: 'taiping_book', name: '太平要术', kind: 'accessory', bonuses: { mp: 15, spirit: 3 }, desc: '宝物：南华老仙授张角之书' },
+  { id: 'taiping_book', name: '太平要术', kind: 'accessory', bonuses: { mp: 15, spirit: 3 }, allowedClasses: ['strategist', 'taoist'], desc: '宝物：南华老仙授张角之书' },
   { id: 'sunzi_book', name: '孙子兵法', kind: 'accessory', bonuses: { spirit: 5 }, desc: '宝物：兵家圣典' },
   // 消耗品
   { id: 'jinchuang_yao', name: '金创药', kind: 'consumable', healHp: 60, desc: '回复 60 HP' },

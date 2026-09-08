@@ -22,11 +22,11 @@ const defs: HeroDef[] = [
   { id: 'yujin', name: '于禁', title: '字文则', classId: 'archer', portraitHue: 45,
     base: { hp: 40, mp: 0, atk: 11, def: 7, spirit: 6, agi: 10 } },
   { id: 'xunyu', name: '荀彧', title: '字文若', classId: 'strategist', portraitHue: 120,
-    base: { hp: 34, mp: 20, atk: 5, def: 5, spirit: 15, agi: 8 } },
+    base: { hp: 38, mp: 20, atk: 5, def: 5, spirit: 15, agi: 8 } },
   { id: 'xunyou', name: '荀攸', title: '字公达', classId: 'strategist', portraitHue: 130,
-    base: { hp: 33, mp: 22, atk: 4, def: 5, spirit: 16, agi: 8 } },
+    base: { hp: 38, mp: 22, atk: 4, def: 5, spirit: 16, agi: 8 } },
   { id: 'guojia', name: '郭嘉', title: '字奉孝', classId: 'taoist', portraitHue: 160,
-    base: { hp: 32, mp: 18, atk: 4, def: 4, spirit: 14, agi: 9 } },
+    base: { hp: 36, mp: 18, atk: 4, def: 4, spirit: 14, agi: 9 } },
 ]
 
 export const heroes: Record<string, HeroDef> = Object.fromEntries(defs.map((d) => [d.id, d]))
