@@ -22,6 +22,7 @@ describe('cast 指令', () => {
     expect(e1.hp).toBeLessThan(60)
     expect(s1.acted).toBe(true)
     expect(r.events.some((ev) => ev.type === 'spellCast')).toBe(true)
+    expect(r.events.some((ev) => ev.type === 'hpChanged' && ev.unitId === 'e1')).toBe(true)
     expect(r.events.some((ev) => ev.type === 'expGained' && ev.unitId === 's1')).toBe(true)
   })
 
