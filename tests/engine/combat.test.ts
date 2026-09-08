@@ -54,6 +54,10 @@ describe('命中/暴击/连击概率', () => {
     expect(comboChance(20, 10)).toBe(15)
     expect(comboChance(100, 10)).toBe(30)
   })
+  it('同兵种无相克；负敏捷差连击为 0', () => {
+    expect(affinity('cavalry', 'cavalry')).toBe(1.0)
+    expect(comboChance(10, 100)).toBe(0)
+  })
 })
 
 describe('法术公式', () => {
@@ -71,5 +75,12 @@ describe('法术公式', () => {
   })
   it('回复 = 威力 + 施法者精神', () => {
     expect(healAmount(40, 20)).toBe(60)
+  })
+  it('雨天只强化水系；山地只强化土系（负向门禁）', () => {
+    expect(spellDamage({ power: 30, casterSpirit: 20, targetSpirit: 10, weather: 'rainy', element: 'fire' })).toBe(42)
+    expect(spellDamage({ power: 30, casterSpirit: 20, targetSpirit: 10, weather: 'sunny', element: 'water', targetOnMountain: true })).toBe(42)
+  })
+  it('法术伤害保底 1 点', () => {
+    expect(spellDamage({ power: 10, casterSpirit: 5, targetSpirit: 100, weather: 'sunny', element: 'fire' })).toBe(1)
   })
 })

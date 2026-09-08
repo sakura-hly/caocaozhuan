@@ -25,14 +25,17 @@ export function physicalDamage(a: PhysicalArgs): number {
   return Math.max(1, Math.round(raw))
 }
 
+/** 返回百分数 0-100。与 rng 抽取组合判断时需 /100。 */
 export function hitChance(attackerAgi: number, defenderAgi: number): number {
   return clamp(90 + (attackerAgi - defenderAgi), 50, 100)
 }
 
+/** 返回百分数 0-100。与 rng 抽取组合判断时需 /100。 */
 export function critChance(attackerAgi: number, defenderAgi: number): number {
   return clamp(5 + (attackerAgi - defenderAgi) * 0.5, 0, 40)
 }
 
+/** 返回百分数 0-100。与 rng 抽取组合判断时需 /100。 */
 export function comboChance(attackerAgi: number, defenderAgi: number): number {
   return clamp((attackerAgi - defenderAgi) * 1.5, 0, 30)
 }
