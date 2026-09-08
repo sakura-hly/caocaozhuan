@@ -18,7 +18,8 @@ export function evaluate(s: BattleState): BattleVerdict {
       won = aliveEnemies.length === 0
       break
     case 'killCommander': {
-      const c = s.units.find((u) => u.id === s.win.unitId)
+      const { unitId } = s.win
+      const c = s.units.find((u) => u.id === unitId)
       won = c !== undefined && !c.alive
       break
     }
@@ -26,8 +27,9 @@ export function evaluate(s: BattleState): BattleVerdict {
       won = s.turn > s.win.untilTurn
       break
     case 'reach': {
-      const u = s.units.find((x) => x.id === s.win.unitId)
-      won = u !== undefined && u.alive && u.pos.x === s.win.cell.x && u.pos.y === s.win.cell.y
+      const { unitId, cell } = s.win
+      const u = s.units.find((x) => x.id === unitId)
+      won = u !== undefined && u.alive && u.pos.x === cell.x && u.pos.y === cell.y
       break
     }
   }
