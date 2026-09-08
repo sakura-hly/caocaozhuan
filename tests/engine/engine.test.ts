@@ -30,6 +30,13 @@ describe('move 指令', () => {
       expect(r.events.some((e) => e.type === 'unitMoved')).toBe(true)
     }
   })
+  it('apply 不改写入参状态（不可变约定）', () => {
+    const s = state()
+    const snapshot = structuredClone(s)
+    const r = apply(s, { type: 'move', unitId: 'p1', to: { x: 4, y: 2 } }, gameData)
+    expect(r.ok).toBe(true)
+    expect(s).toEqual(snapshot) // 原状态深相等，未被突变
+  })
   it('超范围移动 → OUT_OF_MOVE_RANGE', () => {
     const r = apply(state(), { type: 'move', unitId: 'p1', to: { x: 7, y: 6 } }, gameData)
     expect(r).toEqual({ ok: false, error: { code: 'OUT_OF_MOVE_RANGE', unitId: 'p1' } })
