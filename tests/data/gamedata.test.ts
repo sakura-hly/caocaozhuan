@@ -12,6 +12,7 @@ describe('静态数据完整性', () => {
       const c = gameData.classes[id]
       expect(c, `兵种 ${id}`).toBeDefined()
       for (const v of Object.values(c.growth)) expect(v).toBeGreaterThanOrEqual(0)
+      for (const v of Object.values(c.growth)) expect(v).toBeLessThanOrEqual(10)
       expect(c.movePower).toBeGreaterThan(0)
       expect(c.maxRange).toBeGreaterThanOrEqual(c.minRange)
     }

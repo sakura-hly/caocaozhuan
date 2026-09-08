@@ -90,7 +90,10 @@ export interface Unit {
 export interface ReinforcementEntry { unit: Unit; at: Cell }
 export interface ReinforcementDef { turn: number; entries: ReinforcementEntry[] }
 export interface TreasureCell { cell: Cell; itemId: string; found: boolean }
-export interface DialogueTrigger { turn?: number; onDeathOf?: string; dialogueId: string }
+/** 对话触发器：turn（回合开始时触发）与 onDeathOf（指定单位阵亡时触发）二选一。 */
+export type DialogueTrigger =
+  | { turn: number; onDeathOf?: undefined; dialogueId: string }
+  | { onDeathOf: string; turn?: undefined; dialogueId: string }
 export interface WeatherScriptEntry { turn: number; weather: Weather }
 
 export type WinCondition =
