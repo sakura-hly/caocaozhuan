@@ -1,0 +1,101 @@
+import type { BattleDef, Cell, ClassId, Faction, ItemSlot, Stats, TerrainId, Unit } from '../../engine/types'
+import type { GameData } from '../index'
+import { heroes } from '../heroes'
+import { moveCostFor } from '../../engine/movement'
+
+export const MAP_LEGEND: Record<string, TerrainId> = {
+  '.': 'plain', f: 'forest', m: 'mountain', w: 'water', C: 'city', P: 'camp', G: 'pass', b: 'bridge',
+}
+
+export function parseMap(rows: string[]): TerrainId[][] {
+  return rows.map((r) => [...r].map((ch) => {
+    const t = MAP_LEGEND[ch]
+    if (!t) throw new Error(`未知地形字符: ${ch}`)
+    return t
+  }))
+}
+
+/** 从武将档案生成单位（初始 HP/MP 取满值）。 */
+export function heroUnit(
+  heroId: string, faction: Faction, pos: Cell,
+  o: { level?: number; equipment?: Partial<Record<ItemSlot, string>>; items?: string[] } = {},
+): Unit {
+  const h = heroes[heroId]
+  return {
+    id: heroId, heroId, name: h.name, faction, classId: h.classId,
+    level: o.level ?? 1, exp: 0, base: { ...h.base }, hp: h.base.hp, mp: h.base.mp,
+    pos: { ...pos }, equipment: { ...o.equipment }, items: [...(o.items ?? [])],
+    statuses: [], moved: false, acted: false, alive: true,
+  }
+}
+
+/** 杂兵/敌将单位（不走武将档案）。 */
+export function mobUnit(
+  id: string, name: string, classId: ClassId, faction: Faction, pos: Cell, base: Stats,
+): Unit {
+  return {
+    id, heroId: '', name, faction, classId, level: 1, exp: 0, base: { ...base },
+    hp: base.hp, mp: base.mp, pos: { ...pos }, equipment: {}, items: [],
+    statuses: [], moved: false, acted: false, alive: true,
+  }
+}
+
+/** 战役数据静态校验（加载期调用），返回错误列表（空 = 合法）。 */
+export function validateBattleDef(def: BattleDef, data: GameData): string[] {
+  const errs: string[] = []
+  const h = def.map.length
+  const w = def.map[0]?.length ?? 0
+  if (h < 5 || w < 5) errs.push(`地图尺寸 ${w}x${h} 过小（至少 5x5）`)
+  for (let y = 0; y < h; y++) if (def.map[y].length !== w) errs.push(`地图第 ${y} 行宽度不一致`)
+  const inBounds = (c: Cell) => c.x >= 0 && c.y >= 0 && c.x < w && c.y < h
+  const seen = new Set<string>()
+  const checkPos = (u: Unit, c: Cell, tag: string, overlap: boolean) => {
+    if (!inBounds(c)) { errs.push(`${tag} 位置越界 (${c.x},${c.y})`); return }
+    const t = def.map[c.y][c.x]
+    if (!Number.isFinite(moveCostFor(data.terrains[t], u.classId))) errs.push(`${tag} 站在不可通行地形 ${t}`)
+    const k = `${c.x},${c.y}`
+    if (overlap) {
+      if (seen.has(k)) errs.push(`${tag} 与其他单位位置重叠 (${k})`)
+      seen.add(k)
+    }
+  }
+  const checkGear = (u: Unit) => {
+    for (const id of Object.values(u.equipment)) {
+      if (id !== undefined && !data.items[id]) errs.push(`单位 ${u.id} 引用未知装备 ${id}`)
+    }
+    for (const id of u.items) if (!data.items[id]) errs.push(`单位 ${u.id} 携带未知道具 ${id}`)
+  }
+  def.units.forEach((u) => {
+    checkPos(u, u.pos, `单位 ${u.id}`, true)
+    if (u.heroId !== '' && !data.heroes[u.heroId]) errs.push(`单位 ${u.id} 引用未知武将 ${u.heroId}`)
+    checkGear(u)
+  })
+  // 【勘误 1】单位 id 跨集合唯一性（def.units + 全部增援 entries；T10 运行时守卫的静态前置）
+  const idCounts = new Map<string, number>()
+  for (const u of def.units) idCounts.set(u.id, (idCounts.get(u.id) ?? 0) + 1)
+  for (const r of def.reinforcements) for (const e of r.entries) idCounts.set(e.unit.id, (idCounts.get(e.unit.id) ?? 0) + 1)
+  for (const [id, n] of idCounts) if (n > 1) errs.push(`单位 id 重复: ${id}（出现 ${n} 次）`)
+  def.reinforcements.forEach((r) => {
+    if (r.turn < 2) errs.push(`增援回合数应 ≥2（turn=${r.turn}）`)
+    r.entries.forEach((e) => checkPos(e.unit, e.at, `增援 ${e.unit.id}`, false))
+  })
+  def.treasureCells.forEach((t) => { if (!inBounds(t.cell)) errs.push(`宝物格越界 (${t.cell.x},${t.cell.y})`) })
+  if (def.win.kind === 'killCommander' || def.win.kind === 'reach') {
+    const id = def.win.unitId
+    const inField = def.units.some((u) => u.id === id)
+    const inReinf = def.reinforcements.some((r) => r.entries.some((e) => e.unit.id === id))
+    if (!inField && !inReinf) errs.push(`胜利条件引用不存在的单位 ${id}`)
+    // 【勘误 2】击破目标应为敌方阵营（防数据 bug 导致己方单位阵亡判胜）
+    if (def.win.kind === 'killCommander') {
+      const target = def.units.find((u) => u.id === id) ?? def.reinforcements.flatMap((r) => r.entries.map((e) => e.unit)).find((u) => u.id === id)
+      if (target && target.faction !== 'enemy') errs.push(`击破目标 ${id} 应为敌方阵营（当前 ${target.faction}）`)
+    }
+    // 【勘误 3】目标仅来自增援时告警（增援落点冲突被丢弃则战役不可胜）
+    if (!inField && inReinf) errs.push(`告警：胜利目标 ${id} 仅来自增援（若增援被丢弃，战役将不可胜）`)
+  }
+  if (def.win.kind === 'survive' && def.win.untilTurn >= def.maxTurns) {
+    errs.push(`坚守 ${def.win.untilTurn} 回合必须小于回合上限 ${def.maxTurns}`)
+  }
+  if (def.maxTurns < 1) errs.push('回合上限必须 ≥1')
+  return errs
+}
