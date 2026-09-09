@@ -1,5 +1,10 @@
 import type { ClassId, Faction, HeroDef, TerrainId, Unit } from '../engine/types'
 
+/**
+ * 像素画字符图例：
+ * h/H = 冠帽 亮/暗（兵种色相）    a/A = 甲 亮/暗（阵营色相）
+ * s = 肤色   e = 眼睛   o = 轮廓   w/W = 武器 亮/暗   . = 透明
+ */
 export const SPRITE_CHARS = new Set(['.', 'o', 's', 'e', 'h', 'H', 'a', 'A', 'w', 'W'])
 
 /** 每兵种 16×16 像素画 —— 剪影必须互不相同（hue 撞色的结构性修复）。 */
@@ -176,8 +181,8 @@ export function drawSprite(
         : ch === 'H' ? palette.H
         : ch === 'a' ? palette.a
         : ch === 'A' ? palette.A
-        : STATIC_COLORS[ch]!
-      ctx.fillRect(destX + x * scale, destY + y * scale, px, px)
+        : STATIC_COLORS[ch] ?? '#26221c'
+      ctx.fillRect(destX + Math.round(x * scale), destY + Math.round(y * scale), px, px)
     }
   }
   ctx.restore()
