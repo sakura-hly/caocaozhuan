@@ -14,7 +14,10 @@ const mkEnemyTurn = () => {
 
 describe('runFactionTurn', () => {
   it('敌方回合：有事件、零错误、敌方全员 acted', () => {
-    const r = runFactionTurn(mkEnemyTurn(), 'enemy', gameData)
+    const s0 = mkEnemyTurn()
+    const before = structuredClone(s0)
+    const r = runFactionTurn(s0, 'enemy', gameData)
+    expect(s0).toEqual(before) // 纯度契约：入参 state 不被变异
     expect(r.events.length).toBeGreaterThan(0)
     expect(r.errors).toEqual([])
     expect(r.state.units.filter((u) => u.faction === 'enemy' && u.alive).every((u) => u.acted)).toBe(true)
@@ -31,9 +34,11 @@ describe('runFactionTurn', () => {
     last.acted = false
     const p1 = s.units.find((u) => u.id === 'caocao')!
     p1.pos = { x: 2, y: 0 }
+    // moved=true 仅为贴近「移动后攻击」场景；AI 出纯 [attack] 依赖：评分与攻击者站位无关、
+    // 原地格先评估且严格 > 平局保留首项 —— 引入站位加成后此用例需随之调整
     p1.moved = true
     p1.acted = false
-    const p2 = s.units.find((u) => u.id === 'xiaohoudun') ?? s.units.filter((u) => u.faction === 'player')[1]!
+    const p2 = s.units.find((u) => u.id === 'xiaohoudun')!
     p2.pos = { x: 3, y: 1 }
     p2.moved = true
     p2.acted = false
