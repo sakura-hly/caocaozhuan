@@ -475,7 +475,7 @@ onBeforeUnmount(() => {
         :won="result.won" :turn="result.turn" :rewards="[]"
         @restart="restart" @exit="$emit('exit')"
       />
-      <DialogueBox v-if="dialogueText.length && !result" :lines="dialogueText" @finished="onDialogueFinished" />
+      <DialogueBox v-if="dialogueText.length && !result" :key="dialogueId!" :lines="dialogueText" @finished="onDialogueFinished" />
     </div>
   </div>
 </template>
