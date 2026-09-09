@@ -38,7 +38,7 @@ export class BattlefieldRenderer {
 
   /** 换地图时调用：重建离屏地形缓存（水格留空，逐帧动画）。
    * 契约：map 必须与 setState 传入 state.map 一致（渲染器持有两份视图）。 */
-  setMap(map: string[], mapW: number, mapH: number): void {
+  setMap(map: TerrainId[][], mapW: number, mapH: number): void {
     this.waterCells = []
     this.terrainCache = document.createElement('canvas')
     this.terrainCache.width = mapW * TILE
