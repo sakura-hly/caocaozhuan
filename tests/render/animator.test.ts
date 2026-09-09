@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import type { Cell, GameEvent, HitDetail } from '../../src/engine/types'
 import {
-  planAnimations, SLIDE_MS_PER_CELL, LUNGE_MS, FLASH_MS, FADE_MS, BANNER_MS,
+  planAnimations, SLIDE_MS_PER_CELL, LUNGE_MS, FLASH_MS, FADE_MS, BANNER_MS, type AnimStep,
 } from '../../src/render/animator'
 
 const pos = (x: number, y: number): Cell => ({ x, y })
@@ -115,6 +115,45 @@ describe('planAnimations 纯函数', () => {
     const texts = banners.map((b) => b.text)
     expect(texts).toEqual(['第 2 回合', '敌军行动'])
     expect(banners[0]!.dur).toBe(BANNER_MS)
+  })
+  it('I1 原地移动（单格 path）→ 不产出 slide，finalPositions 更新，零时长', () => {
+    const events: GameEvent[] = [
+      { type: 'unitMoved', unitId: 'p1', path: [pos(3, 3)] },
+    ]
+    const plan = planAnimations(events, { ...P })
+    expect(plan.steps).toEqual([])
+    expect(plan.finalPositions.p1).toEqual(pos(3, 3))
+    expect(plan.totalMs).toBe(0)
+  })
+  it('M3 攻击击杀序列：lunge → flash → 伤害飘字 → fade（unitDied 先于 attackLaunched 到达）', () => {
+    const events: GameEvent[] = [
+      { type: 'hpChanged', unitId: 'e1', hp: 0, delta: -8 },
+      { type: 'unitDied', unitId: 'e1', byUnitId: 'p1' },
+      { type: 'attackLaunched', hits: [hit()] },
+    ]
+    const plan = planAnimations(events, { ...P })
+    expect(plan.steps.map((s) => s.kind)).toEqual(['lunge', 'flash', 'float', 'fade'])
+  })
+  it('M3 法术击杀：burst → 飘字 → fade（无 attackLaunched，末尾 flush）', () => {
+    const events: GameEvent[] = [
+      { type: 'spellCast', casterId: 'p1', strategyId: 'huoshi', target: pos(6, 3) },
+      { type: 'hpChanged', unitId: 'e1', hp: 0, delta: -8 },
+      { type: 'unitDied', unitId: 'e1' },
+    ]
+    const plan = planAnimations(events, { ...P })
+    expect(plan.steps.map((s) => s.kind)).toEqual(['burst', 'float', 'fade'])
+  })
+  it('批量回放位置锁：伤害飘字在 flash 后、下一单位移动前', () => {
+    const events: GameEvent[] = [
+      { type: 'hpChanged', unitId: 'e1', hp: 12, delta: -8 },
+      { type: 'attackLaunched', hits: [hit()] },
+      { type: 'unitMoved', unitId: 'e1', path: [pos(6, 3), pos(5, 3)] },
+    ]
+    const plan = planAnimations(events, { ...P })
+    expect(plan.steps.map((s) => s.kind)).toEqual(['lunge', 'flash', 'float', 'slide'])
+    const tOf = (kind: AnimStep['kind']): number => plan.steps.find((s) => s.kind === kind)!.t
+    expect(tOf('slide')).toBeGreaterThan(tOf('float'))
+    expect(tOf('float')).toBeGreaterThan(tOf('flash'))
   })
   it('空事件 → 空计划；被忽略事件类型不产生步骤', () => {
     expect(planAnimations([], {})).toEqual({ steps: [], finalPositions: {}, totalMs: 0 })

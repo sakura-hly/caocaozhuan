@@ -29,20 +29,23 @@ const STATUS_LABELS: Record<string, string> = { stun: '眩晕', defdown: '破甲
 const FACTION_BANNERS: Record<string, string> = { player: '我军行动', enemy: '敌军行动', ally: '友军行动' }
 
 /** 事件序列 → 带时间轴的动画步骤表。纯函数：不触碰渲染器、不读时钟。
- * 核心顺序修复：引擎先发 hpChanged 再发 attackLaunched，故伤害数字进 pendingHp 缓冲，
- * 压后到 lunge/flash 之后才落屏（flushHp）。 */
+ * 核心顺序修复：引擎先发 hpChanged/unitDied 再发 attackLaunched（恒最后），故伤害数字与
+ * 阵亡分别进 pendingHp / pendingDeaths 缓冲，压后到 lunge/flash 之后才落屏（flushHp → flushDeaths）。 */
 export function planAnimations(events: GameEvent[], positions: Record<string, Cell>): PlanResult {
   const steps: AnimStep[] = []
   const finalPositions: Record<string, Cell> = { ...positions }
   let t = 0
   let pendingHp: { unitId: string; delta: number }[] = []
+  let pendingDeaths: string[] = []
 
-  const posOf = (id: string): Cell => finalPositions[id] ?? { x: 0, y: 0 }
+  const posOf = (id: string): Cell | null => finalPositions[id] ?? null
   const flushHp = (): void => {
     for (const h of pendingHp) {
+      const at = posOf(h.unitId)
+      if (!at) continue // 未知位置（如批量回放中的增援单位）不产步骤，避免飘字落到 (0,0)
       const n = Math.abs(h.delta)
       steps.push({
-        kind: 'float', t, dur: FLOAT_MS, at: posOf(h.unitId),
+        kind: 'float', t, dur: FLOAT_MS, at,
         text: h.delta < 0 ? `-${n}` : `+${n}`,
         color: h.delta < 0 ? '#ff5a4a' : '#5ae08a',
       })
@@ -50,33 +53,49 @@ export function planAnimations(events: GameEvent[], positions: Record<string, Ce
     }
     pendingHp = []
   }
+  const flushDeaths = (): void => {
+    for (const id of pendingDeaths) {
+      steps.push({ kind: 'fade', t, dur: FADE_MS, unitId: id })
+      t += FADE_MS + STEP_GAP
+    }
+    pendingDeaths = []
+  }
+  const flushAll = (): void => { flushHp(); flushDeaths() }
 
   for (const ev of events) {
     switch (ev.type) {
       case 'unitMoved': {
-        flushHp()
+        flushAll()
         const path = ev.path
         const to = path[path.length - 1]!
-        const dur = Math.max(SLIDE_MS_PER_CELL, SLIDE_MS_PER_CELL * (path.length - 1))
+        finalPositions[ev.unitId] = { x: to.x, y: to.y }
+        if (path.length < 2) break // 原地移动：不产出 slide（播放器 segs=0 会越界），仅记录终点
+        const dur = SLIDE_MS_PER_CELL * (path.length - 1)
         steps.push({ kind: 'slide', t, dur, unitId: ev.unitId, path })
         t += dur + STEP_GAP
-        finalPositions[ev.unitId] = { x: to.x, y: to.y }
         break
       }
       case 'attackLaunched': {
-        // hits 数组：每 hit 一段 lunge →（落空飘字 | 闪白），全部 hit 后再 flushHp
+        // hits 数组：每 hit 一段 lunge →（落空飘字 | 闪白），全部 hit 后 flushHp → flushDeaths，
+        // 达成 lunge → flash → 伤害飘字 → fade（击杀时 unitDied 先于本事件到达）
         for (const h of ev.hits) {
-          steps.push({ kind: 'lunge', t, dur: LUNGE_MS, unitId: h.attackerId, toward: posOf(h.defenderId) })
-          t += LUNGE_MS + STEP_GAP
+          const at = posOf(h.defenderId)
+          if (at) {
+            steps.push({ kind: 'lunge', t, dur: LUNGE_MS, unitId: h.attackerId, toward: at })
+            t += LUNGE_MS + STEP_GAP
+          }
           if (h.missed) {
-            steps.push({ kind: 'float', t, dur: FLOAT_MS, at: posOf(h.defenderId), text: '落空', color: '#b8b8b8' })
-            t += FLOAT_GAP
+            if (at) {
+              steps.push({ kind: 'float', t, dur: FLOAT_MS, at, text: '落空', color: '#b8b8b8' })
+              t += FLOAT_GAP
+            }
           } else {
             steps.push({ kind: 'flash', t, dur: FLASH_MS, unitId: h.defenderId })
             t += FLASH_MS + STEP_GAP
           }
         }
-        flushHp() // 伤害数字压后到 lunge/flash 之后
+        flushHp()
+        flushDeaths()
         break
       }
       case 'hpChanged': {
@@ -84,13 +103,11 @@ export function planAnimations(events: GameEvent[], positions: Record<string, Ce
         break
       }
       case 'unitDied': {
-        flushHp()
-        steps.push({ kind: 'fade', t, dur: FADE_MS, unitId: ev.unitId })
-        t += FADE_MS + STEP_GAP
+        pendingDeaths.push(ev.unitId) // fade 压后到攻击动画之后（见 attackLaunched 分支）
         break
       }
       case 'spellCast': {
-        flushHp()
+        flushAll()
         const s = gameData.strategies[ev.strategyId]
         const color = s ? (s.kind === 'attack' ? ELEMENT_COLORS[s.element ?? 'fire'] ?? '#ff8a3a' : KIND_COLORS[s.kind] ?? '#d090ff') : '#d090ff'
         steps.push({ kind: 'burst', t, dur: BURST_MS, at: { x: ev.target.x, y: ev.target.y }, color })
@@ -98,31 +115,40 @@ export function planAnimations(events: GameEvent[], positions: Record<string, Ce
         break
       }
       case 'statusApplied': {
-        flushHp()
-        steps.push({ kind: 'float', t, dur: FLOAT_MS, at: posOf(ev.unitId), text: STATUS_LABELS[ev.kind] ?? ev.kind, color: '#ffe06a' })
-        t += FLOAT_GAP
+        flushAll()
+        const at = posOf(ev.unitId)
+        if (at) {
+          steps.push({ kind: 'float', t, dur: FLOAT_MS, at, text: STATUS_LABELS[ev.kind] ?? ev.kind, color: '#ffe06a' })
+          t += FLOAT_GAP
+        }
         break
       }
       case 'levelUp': {
-        flushHp()
-        steps.push({ kind: 'float', t, dur: FLOAT_MS, at: posOf(ev.unitId), text: '升级！', color: '#ffd84a' })
-        t += FLOAT_GAP
+        // 不 flush：击杀+升级序列中 levelUp 位于 attackLaunched 之前，flush 会把伤害数字提前放出
+        const at = posOf(ev.unitId)
+        if (at) {
+          steps.push({ kind: 'float', t, dur: FLOAT_MS, at, text: '升级！', color: '#ffd84a' })
+          t += FLOAT_GAP
+        }
         break
       }
       case 'treasureFound': {
-        flushHp()
-        steps.push({ kind: 'float', t, dur: FLOAT_MS, at: posOf(ev.unitId), text: '获得宝物', color: '#ffd84a' })
-        t += FLOAT_GAP
+        flushAll()
+        const at = posOf(ev.unitId)
+        if (at) {
+          steps.push({ kind: 'float', t, dur: FLOAT_MS, at, text: '获得宝物', color: '#ffd84a' })
+          t += FLOAT_GAP
+        }
         break
       }
       case 'roundStarted': {
-        flushHp()
+        flushAll()
         steps.push({ kind: 'banner', t, dur: BANNER_MS, text: `第 ${ev.turn} 回合` })
         t += BANNER_MS + STEP_GAP
         break
       }
       case 'turnStarted': {
-        flushHp()
+        flushAll()
         steps.push({ kind: 'banner', t, dur: BANNER_MS, text: FACTION_BANNERS[ev.faction] ?? ev.faction })
         t += BANNER_MS + STEP_GAP
         break
@@ -131,11 +157,12 @@ export function planAnimations(events: GameEvent[], positions: Record<string, Ce
         break // battleStarted/turnEnded/weatherChanged/expGained/mpChanged/itemUsed/reinforcementsArrived/reinforcementDropped/dialogueTriggered/battleWon/battleLost 不做动画
     }
   }
-  flushHp()
+  flushAll()
   return { steps, finalPositions, totalMs: t }
 }
 
-/** rAF 播放器：把步骤表逐帧换算为渲染器覆盖。 */
+/** rAF 播放器：把步骤表逐帧换算为渲染器覆盖。
+ * 契约：播放期间 renderer.setState 持有动作前状态；调用方应在 onDone 内应用动作后状态。 */
 export class Animator {
   private raf = 0
   private start = 0
@@ -161,15 +188,16 @@ export class Animator {
     this.start = performance.now()
     const tick = (now: number): void => {
       const el = now - this.start
+      // 完成帧顺序：先定格末帧并渲染，onDone 让调用方应用动作后状态，最后才清特效
+      // （清后由调用方主循环重绘，无需此处二次 render）
       this.renderFrame(el)
       this.renderer.render(now)
       if (el >= this.total) {
         this._busy = false
-        this.clearFx()
-        this.renderer.render(now)
         const done = this.onDone
         this.onDone = null
         done?.()
+        this.clearFx()
       } else {
         this.raf = requestAnimationFrame(tick)
       }
