@@ -9,7 +9,7 @@ defineEmits<{ (e: 'restart'): void; (e: 'exit'): void }>()
     <h2>{{ won ? '胜 利' : '败 北' }}</h2>
     <p>第 {{ turn }} 回合{{ won ? '告捷' : '战罢' }}</p>
     <ul v-if="rewards.length" class="rewards">
-      <li v-for="r in rewards" :key="r">获得 {{ r }}</li>
+      <li v-for="(r, i) in rewards" :key="`${i}-${r}`">获得 {{ r }}</li>
     </ul>
     <div class="btns">
       <button @click="$emit('restart')">重新开始</button>
@@ -19,7 +19,7 @@ defineEmits<{ (e: 'restart'): void; (e: 'exit'): void }>()
 </template>
 
 <style scoped>
-.overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: rgba(10, 8, 6, 0.82); color: #f0e6c8; }
+.overlay { position: absolute; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: rgba(10, 8, 6, 0.82); color: #f0e6c8; }
 h2 { font-family: 'Songti SC', serif; font-size: 56px; letter-spacing: 20px; margin: 0; color: #f0d28a; }
 .rewards { list-style: none; padding: 0; color: #d8b86a; }
 .btns { display: flex; gap: 12px; }

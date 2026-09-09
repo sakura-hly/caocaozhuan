@@ -44,6 +44,7 @@ const result = ref<{ won: boolean; turn: number } | null>(null)
 const dialogueId = ref<string | null>(null)
 const dialogueText = computed(() =>
   dialogueId.value ? dialogueLines(props.battleId, dialogueId.value) : [])
+const dialogueActive = computed(() => dialogueId.value !== null)
 
 // ---------- 非响应式句柄与动画池 ----------
 let renderer: BattlefieldRenderer | null = null
@@ -191,7 +192,7 @@ function applyRendererState(): void {
 /** 终局结算：动画播放中（busy）或对话展示中（dialogueId）跳过，待二者都结束后置位。 */
 function settleResult(): void {
   const s = state.value
-  if (s && s.finished !== null && !result.value && !busy.value && !dialogueId.value)
+  if (s && s.finished !== null && !result.value && !busy.value && !dialogueId.value && !ui.dialogueQueue.length)
     result.value = { won: s.finished === 'won', turn: s.turn }
 }
 
@@ -223,7 +224,7 @@ function drainDialogues(): void {
   }
 }
 function onDialogueFinished(): void {
-  orch?.acknowledgeDialogue()
+  orch?.acknowledgeDialogue() // 必须先于置空：嵌套 onState 里的 settleResult 靠 dialogueId 尚未清空才不抢跑
   dialogueId.value = null
   drainDialogues() // 链式取下一条
   settleResult() // 队列已空且已终局 → 此刻才弹结算（时序要求，见任务说明）
@@ -265,7 +266,7 @@ function inBoard(s: BattleState, c: Cell): boolean {
 
 function onClick(e: MouseEvent): void {
   const s = state.value
-  if (busy.value || dialogueId.value || !orch || !s || s.finished !== null) return
+  if (busy.value || dialogueActive.value || !orch || !s || s.finished !== null) return
   const cell = screenToCell(e.offsetX, e.offsetY, cam)
   const unit = unitAt(s, cell)
   if (menuMode.value === 'attackPick') {
@@ -334,7 +335,7 @@ function pan(dx: number, dy: number): void {
 }
 
 function onKey(e: KeyboardEvent): void {
-  if (result.value || dialogueId.value || !state.value) return
+  if (result.value || dialogueActive.value || !state.value) return
   if (e.key === 'Escape') {
     if (menuMode.value === 'attackPick' || menuMode.value === 'spellPick' || menuMode.value === 'spell' || menuMode.value === 'item') {
       pendingSpellId.value = null
@@ -440,7 +441,7 @@ onBeforeUnmount(() => {
       <span>{{ factionOf === 'player' ? '我军行动' : factionOf === 'enemy' ? '敌军行动' : '友军行动' }}</span>
       <span>{{ state?.weather === 'rainy' ? '雨' : state?.weather === 'cloudy' ? '阴' : '晴' }}</span>
       <span class="spacer" />
-      <button :disabled="busy || factionOf !== 'player' || !!result || !!dialogueId" @click="doIntent({ type: 'endTurn' })">结束回合</button>
+      <button :disabled="busy || factionOf !== 'player' || !!result || dialogueActive" @click="doIntent({ type: 'endTurn' })">结束回合</button>
       <button @click="$emit('exit')">退出</button>
     </div>
     <div ref="holderEl" class="holder">
