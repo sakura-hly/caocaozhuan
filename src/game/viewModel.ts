@@ -4,6 +4,12 @@ import { effectiveMove, effectiveStats, findUnit, hostile } from '../engine/inte
 import { attackRangeCells, computeMoveRange, inRange } from '../engine/movement'
 import { castableInWeather } from '../engine/spells'
 
+/**
+ * UI 派生查询（纯函数组合层，不持有状态）。
+ * 空值约定：未选中/不存在/已行动（moveRangeCells 另含已移动）一律返回空值而非报错，UI 据此灰化。
+ * 阵营口径：查询函数不过滤阵营（显示层可查任意单位）；「是否可选/可操作」一律以
+ * buildViewModel 的 actionable（含当前阵营判定）为准 —— UI 不得以查询结果非空作为可选依据。
+ */
 export interface UnitView { unit: Unit; maxHp: number; maxMp: number; actionable: boolean }
 export interface BattleViewModel {
   turn: number
@@ -40,7 +46,7 @@ export function moveRangeCells(state: BattleState, unitId: string, data: GameDat
   return [...range.cells.values()].map((c) => ({ x: c.x, y: c.y }))
 }
 
-/** 从当前站位可直接物理攻击的敌方单位 id。 */
+/** 从当前站位可直接物理攻击的敌方单位 id。不存在/已行动 → 空数组（UI 据此灰化）。 */
 export function attackTargets(state: BattleState, unitId: string, data: GameData): string[] {
   const u = findUnit(state, unitId)
   if (!u || !u.alive || u.acted) return []
@@ -50,7 +56,7 @@ export function attackTargets(state: BattleState, unitId: string, data: GameData
     .map((t) => t.id)
 }
 
-/** 当前可施放的全体法术（职业/天气/MP 三重过滤）。 */
+/** 当前可施放的全体法术（职业/天气/MP 三重过滤）。不存在/已行动 → 空数组（UI 据此灰化）。 */
 export function castableStrategies(state: BattleState, unitId: string, data: GameData): StrategyDef[] {
   const u = findUnit(state, unitId)
   if (!u || !u.alive || u.acted) return []
@@ -59,7 +65,7 @@ export function castableStrategies(state: BattleState, unitId: string, data: Gam
   )
 }
 
-/** 施法候选格：射程圆盘；治疗/增益另含自身格。 */
+/** 施法候选格：射程圆盘；治疗/增益另含自身格。不存在/已行动/未知法术 → 空数组（UI 据此灰化）。 */
 export function spellTargetCells(state: BattleState, unitId: string, strategyId: string, data: GameData): Cell[] {
   const u = findUnit(state, unitId)
   if (!u || !u.alive || u.acted) return []
@@ -71,7 +77,8 @@ export function spellTargetCells(state: BattleState, unitId: string, strategyId:
   return cells
 }
 
-/** 持有的可用道具（消耗品）。 */
+/** 持有的可用道具（消耗品）。
+ * 行动权判定由 UI 结合 actionable 完成。 */
 export function usableItems(unit: Unit, data: GameData): ItemDef[] {
   return unit.items
     .map((id) => data.items[id])

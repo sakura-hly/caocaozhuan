@@ -7,7 +7,7 @@ import {
 } from '../../src/game/viewModel'
 import { mkState, mkUnit } from '../engine/helpers'
 
-const state0 = initBattle(battles.yingchuan!, 42)
+const state0 = initBattle(battles.yingchuan, 42)
 // 曹操 lord 在 (2,5)；夏侯惇 cavalry；张辽不在颍川。荀彧 xunyu strategist。
 const find = (id: string) => state0.units.find((u) => u.id === id)!
 
@@ -26,7 +26,7 @@ describe('buildViewModel', () => {
     expect(cao.maxMp).toBeGreaterThanOrEqual(cao.unit.mp)
     // 装备 HP 加成生效：明光铠 +10 HP
     const s = mkState({ units: [mkUnit({ id: 'u1', pos: { x: 2, y: 2 }, equipment: { armor: 'mingguang_armor' } })] })
-    const v = buildViewModel(s, gameData).units[0]!
+    const v = buildViewModel(s, gameData).units[0]
     expect(v.maxHp).toBe(v.unit.base.hp + 10)
   })
 })
@@ -37,7 +37,7 @@ describe('moveRangeCells', () => {
     const keys = new Set(cells.map((c) => `${c.x},${c.y}`))
     expect(keys.has(`${find('xiaohoudun').pos.x},${find('xiaohoudun').pos.y}`)).toBe(true)
     for (const c of cells) {
-      expect(state0.map[c.y]![c.x]!).not.toBe('water')
+      expect(state0.map[c.y][c.x]).not.toBe('water')
       expect(state0.units.some((u) => u.alive && u.pos.x === c.x && u.pos.y === c.y && u.id !== 'xiaohoudun')).toBe(false)
     }
     expect(cells.length).toBeGreaterThan(4)
@@ -100,6 +100,25 @@ describe('usableItems', () => {
   it('曹操初始携带 1 个可用道具', () => {
     const items = usableItems(find('caocao'), gameData)
     expect(items.length).toBe(1)
-    expect(items[0]!.kind).toBe('consumable')
+    expect(items[0].kind).toBe('consumable')
+  })
+})
+
+describe('空值契约', () => {
+  it('已移动单位移动范围为空', () => {
+    const s = structuredClone(state0)
+    s.units.find((x) => x.id === 'caocao')!.moved = true
+    expect(moveRangeCells(s, 'caocao', gameData)).toEqual([])
+  })
+  it('未知 unitId 移动范围为空', () => {
+    expect(moveRangeCells(state0, 'nope', gameData)).toEqual([])
+  })
+  it('未知 strategyId 施法目标格为空', () => {
+    expect(spellTargetCells(state0, 'xunyu', 'nope', gameData)).toEqual([])
+  })
+  it('MP 低于消耗的法术不在可施列表', () => {
+    const s = structuredClone(state0)
+    s.units.find((x) => x.id === 'xunyu')!.mp = 3
+    expect(castableStrategies(s, 'xunyu', gameData).map((x) => x.id)).not.toContain('zhiyu')
   })
 })
