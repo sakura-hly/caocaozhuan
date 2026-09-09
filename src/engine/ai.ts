@@ -24,7 +24,9 @@ export function decideUnitAction(state: BattleState, unitId: string, data: GameD
   const cls = data.classes[u.classId]
   let best: Option = { score: 0, cmds: [{ type: 'wait', unitId }] }
 
-  for (const cell of range.cells.values()) {
+  // M-1：已移动单位只评估原地（不再枚举移动范围，也不落入推进分支）
+  const candidates: Cell[] = u.moved ? [u.pos] : [...range.cells.values()]
+  for (const cell of candidates) {
     const moveCmd: Command[] = cellKey(cell) === cellKey(u.pos) ? [] : [{ type: 'move', unitId, to: { x: cell.x, y: cell.y } }]
     // 物理攻击
     for (const t of foes) {
@@ -39,11 +41,11 @@ export function decideUnitAction(state: BattleState, unitId: string, data: GameD
       if (!castableInWeather(s, state.weather)) continue
       if (s.kind === 'heal') {
         const wounded = state.units.filter(
-          (f) => f.alive && !hostile(u.faction, f.faction) && f.hp < f.base.hp * 0.5,
+          (f) => f.alive && !hostile(u.faction, f.faction) && f.hp < effectiveStats(f, data).hp * 0.5,
         )
         for (const f of wounded) {
           if (manhattan(cell, f.pos) > s.range) continue
-          const score = f.base.hp - f.hp // 缺失 HP 越多越优先
+          const score = effectiveStats(f, data).hp - f.hp // 缺失 HP 越多越优先
           if (score > best.score) best = { score, cmds: [...moveCmd, { type: 'cast', unitId, strategyId: s.id, target: { x: f.pos.x, y: f.pos.y } }] }
         }
       } else if (s.kind === 'attack') {
@@ -63,6 +65,7 @@ export function decideUnitAction(state: BattleState, unitId: string, data: GameD
     }
   }
   if (best.score > 0) return best.cmds
+  if (u.moved) return [{ type: 'wait', unitId }] // M-1：已移动单位无处可去
 
   // 推进：选距最近敌人最近的可达格
   let target: Cell = u.pos
