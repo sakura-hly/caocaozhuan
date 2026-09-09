@@ -15,7 +15,7 @@ export function assertBattleValid(def: BattleDef, battleId: string, data: GameDa
   return report.warnings
 }
 
-/** UI 层唯一战役入口：校验 + initBattle。 */
+/** 直连入口：校验 + initBattle（生产经 BattleOrchestrator，其构造器同样走 assertBattleValid；本函数供测试与脚本直连场景）。 */
 export function loadBattle(battleId: string, seed: number): BattleState {
   const def = battles[battleId]
   if (!def) throw new Error(`未知战役: ${battleId}`)

@@ -4,6 +4,7 @@ import { gameData } from '../data'
 import { apply, initBattle } from '../engine'
 import { battles, battleOpeners } from '../data/battles'
 import { runFactionTurn } from './aiRunner'
+import { assertBattleValid } from './bootstrap'
 
 export type Intent =
   | { type: 'selectUnit'; unitId: string }
@@ -37,6 +38,7 @@ export class BattleOrchestrator {
   constructor(battleId: string, seed: number, private cb: OrchestratorCallbacks, private data: GameData = gameData) {
     const def = battles[battleId]
     if (!def) throw new Error(`未知战役: ${battleId}`)
+    assertBattleValid(def, battleId, this.data)
     this.st = initBattle(def, seed)
     const opener = battleOpeners[battleId]
     if (opener) this.ui.dialogueQueue.push(opener)
