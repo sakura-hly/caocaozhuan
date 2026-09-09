@@ -54,7 +54,7 @@ describe('颍川之战全流程自动对局', () => {
     expect(r.errors).toEqual([])
     expect(r.finished).toBe('won')
     expect(r.turn).toBeLessThanOrEqual(battles.yingchuan.maxTurns)
-    expect(r.events.some((e) => e.type === 'battleWon' || e.type === 'battleLost')).toBe(true)
+    expect(r.events.some((e) => e.type === 'battleWon')).toBe(true)
   })
   it('seed 7：两次运行事件序列逐字节一致（确定性）', () => {
     expect(JSON.stringify(autoPlay(7).events)).toBe(JSON.stringify(autoPlay(7).events))
