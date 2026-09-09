@@ -1,4 +1,4 @@
-import type { ClassId, Faction, HeroDef, TerrainId, Unit } from '../engine/types'
+import type { ClassId, Faction, HeroDef, TerrainId } from '../engine/types'
 
 /**
  * 像素画字符图例：
@@ -186,14 +186,6 @@ export function drawSprite(
     }
   }
   ctx.restore()
-}
-
-export function drawUnitSprite(
-  ctx: CanvasRenderingContext2D, unit: Unit,
-  destX: number, destY: number, scale: number,
-  opts: { alpha?: number; flash?: boolean } = {},
-): void {
-  drawSprite(ctx, CLASS_SPRITES[unit.classId], paletteFor(unit.faction, unit.classId), destX, destY, scale, opts)
 }
 
 /** 程序化头像（对话框用）：色相底 + 冠区 + 面 + 肩衣。 */

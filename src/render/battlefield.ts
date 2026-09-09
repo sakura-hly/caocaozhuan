@@ -27,21 +27,18 @@ export class BattlefieldRenderer {
   private floats: FloatText[] = []
   private bursts: BurstFx[] = []
   private banner: string | null = null
-  private mapRows: string[] = []
   private waterCells: Cell[] = []
   private spriteCache = new Map<string, HTMLCanvasElement>()
   private state: BattleState | null = null
 
   constructor(private canvas: HTMLCanvasElement, private data: GameData) {
     this.ctx = canvas.getContext('2d')!
-    this.mapRows = []
     this.terrainCache = document.createElement('canvas')
   }
 
   /** 换地图时调用：重建离屏地形缓存（水格留空，逐帧动画）。
    * 契约：map 必须与 setState 传入 state.map 一致（渲染器持有两份视图）。 */
   setMap(map: string[], mapW: number, mapH: number): void {
-    this.mapRows = map
     this.waterCells = []
     this.terrainCache = document.createElement('canvas')
     this.terrainCache.width = mapW * TILE
