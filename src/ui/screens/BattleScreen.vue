@@ -211,10 +211,16 @@ function onOrchState(s: BattleState, next: UiState): void {
   if (!busy.value && pendingEvents.length) startPlayback() // 首批因 state 未落位而池化的批，此处补播
 }
 
-/** T11：逐条展示对话（替换 T9 的自动跳过）。 */
+/** T11：逐条展示对话（替换 T9 的自动跳过）。无台词的对话 id 直接跳过，防 DialogueBox 不渲染导致锁死。 */
 function drainDialogues(): void {
-  if (!dialogueId.value && orch && orch.uiState.dialogueQueue.length)
-    dialogueId.value = orch.uiState.dialogueQueue[0]!
+  while (orch && !dialogueId.value && orch.uiState.dialogueQueue.length) {
+    const id = orch.uiState.dialogueQueue[0]!
+    if (dialogueLines(props.battleId, id).length === 0) {
+      orch.acknowledgeDialogue() // 无台词：出队取下一条（队列每轮递减，必终止）
+      continue
+    }
+    dialogueId.value = id
+  }
 }
 function onDialogueFinished(): void {
   orch?.acknowledgeDialogue()
@@ -434,7 +440,7 @@ onBeforeUnmount(() => {
       <span>{{ factionOf === 'player' ? '我军行动' : factionOf === 'enemy' ? '敌军行动' : '友军行动' }}</span>
       <span>{{ state?.weather === 'rainy' ? '雨' : state?.weather === 'cloudy' ? '阴' : '晴' }}</span>
       <span class="spacer" />
-      <button :disabled="busy || factionOf !== 'player' || !!result" @click="doIntent({ type: 'endTurn' })">结束回合</button>
+      <button :disabled="busy || factionOf !== 'player' || !!result || !!dialogueId" @click="doIntent({ type: 'endTurn' })">结束回合</button>
       <button @click="$emit('exit')">退出</button>
     </div>
     <div ref="holderEl" class="holder">
