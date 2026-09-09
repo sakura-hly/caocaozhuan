@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { BattleState, GameEvent } from '../../src/engine/types'
-import { apply, decideUnitAction } from '../../src/engine'
+import { apply } from '../../src/engine'
 import { gameData } from '../../src/data'
 import { battles } from '../../src/data/battles'
 import { loadBattle } from '../../src/game/bootstrap'
@@ -14,27 +14,11 @@ function autoPlay(seed: number): { errors: string[]; finished: BattleState['fini
   const errors: string[] = []
   const events: GameEvent[] = []
   for (let guard = 0; guard < 500 && s.finished === null; guard++) {
-    if (factionOf(s) === 'player') {
-      for (const u of s.units) {
-        if (s.finished !== null || u.faction !== 'player' || !u.alive || u.acted) continue
-        for (const cmd of decideUnitAction(s, u.id, gameData)) {
-          if (s.finished !== null) break
-          const r = apply(s, cmd, gameData)
-          if (!r.ok) {
-            errors.push(`player ${u.id}: ${JSON.stringify(cmd)} → ${JSON.stringify(r.error)}`)
-            break
-          }
-          s = r.state
-          events.push(...r.events)
-        }
-      }
-    } else {
-      const aiFaction = factionOf(s)
-      const r = runFactionTurn(s, aiFaction, gameData)
-      s = r.state
-      events.push(...r.events)
-      for (const e of r.errors) errors.push(`${aiFaction}: ${JSON.stringify(e)}`)
-    }
+    const f = factionOf(s)
+    const r = runFactionTurn(s, f, gameData)
+    s = r.state
+    events.push(...r.events)
+    for (const e of r.errors) errors.push(`t${s.turn} ${f}: ${JSON.stringify(e)}`)
     if (s.finished === null) {
       const r = apply(s, { type: 'endTurn' }, gameData)
       if (!r.ok) {
@@ -56,8 +40,10 @@ describe('颍川之战全流程自动对局', () => {
     expect(r.turn).toBeLessThanOrEqual(battles.yingchuan.maxTurns)
     expect(r.events.some((e) => e.type === 'battleWon')).toBe(true)
   })
-  it('seed 7：两次运行事件序列逐字节一致（确定性）', () => {
-    expect(JSON.stringify(autoPlay(7).events)).toBe(JSON.stringify(autoPlay(7).events))
+  it('seed 7：两次运行事件序列完全一致（确定性）', () => {
+    const a = autoPlay(7)
+    const b = autoPlay(7)
+    expect(a.events).toEqual(b.events)
   })
   it('多 seed 全部正常终局且零错误', () => {
     for (const seed of [1, 7, 42, 2026]) {
