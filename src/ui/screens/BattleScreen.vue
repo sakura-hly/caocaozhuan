@@ -149,6 +149,7 @@ function onOrchEvents(events: GameEvent[]): void {
 
 function startPlayback(): void {
   if (!animator) return
+  if (!state.value) return // state 未落位（构造期首批）：事件留池，由 onOrchState 触发
   if (!pendingEvents.length) {
     drainDialogues()
     applyRendererState()
@@ -157,7 +158,7 @@ function startPlayback(): void {
   const evs = pendingEvents
   pendingEvents = []
   // 首批用 state.value（onState 未到，恰为 pre-action）；后续批用链式 finalPositions
-  const positions = renderPositions ?? positionsOf(state.value!)
+  const positions = renderPositions ?? positionsOf(state.value)
   renderPositions = planAnimations(evs, positions).finalPositions
   busy.value = true
   animator.play(evs, positions, () => {
@@ -167,6 +168,7 @@ function startPlayback(): void {
       renderPositions = null
       applyRendererState()
       drainDialogues()
+      settleResult() // 最后一击动画播毕，终局 overlay 此刻才弹出
     }
   })
 }
@@ -175,6 +177,13 @@ function applyRendererState(): void {
   if (busy.value || !renderer || !state.value) return // 动画期间 renderer 持 pre-action 状态
   renderer.setState(state.value)
   syncHighlights()
+}
+
+/** 终局结算：动画播放中（busy）跳过，待最后一击播毕由 onDone 终结分支补调。 */
+function settleResult(): void {
+  const s = state.value
+  if (s && s.finished !== null && !result.value && !busy.value)
+    result.value = { won: s.finished === 'won', turn: s.turn }
 }
 
 function onOrchState(s: BattleState, next: UiState): void {
@@ -188,7 +197,7 @@ function onOrchState(s: BattleState, next: UiState): void {
     centerInitial()
   }
   applyRendererState() // busy 时跳过，动画结束后补
-  if (s.finished !== null && !result.value) result.value = { won: s.finished === 'won', turn: s.turn }
+  settleResult()
   if (next.selectedUnitId === null && !next.canUndo) menuMode.value = 'none'
   if (!busy.value && pendingEvents.length) startPlayback() // 首批因 state 未落位而池化的批，此处补播
 }
@@ -363,6 +372,7 @@ function setupOrchestrator(): void {
 
 function restart(): void {
   animator?.cancel()
+  clearTimeout(toastTimer)
   busy.value = false
   mapInit = false
   result.value = null
