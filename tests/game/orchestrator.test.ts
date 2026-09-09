@@ -56,6 +56,21 @@ describe('选中 / 移动 / 撤销', () => {
     expect(cap.errors.length).toBe(1)
     expect(cap.errors[0]!.code).toBe('OUT_OF_MOVE_RANGE')
   })
+  it('撤销后 preMove 快照重置：改道另一邻格再撤销仍回原位', () => {
+    const { orch } = mkHarness()
+    orch.dispatch({ type: 'selectUnit', unitId: 'caocao' })
+    const from = orch.state.units.find((u) => u.id === 'caocao')!.pos
+    const a = pickAdjacent(orch, 'caocao')
+    orch.dispatch({ type: 'moveTo', to: a })
+    orch.dispatch({ type: 'undoMove' })
+    expect(orch.state.units.find((u) => u.id === 'caocao')!.pos).toEqual(from)
+    const b = pickAdjacent(orch, 'caocao', 1) // 与 a 不同的另一邻格
+    expect(b).not.toEqual(a)
+    orch.dispatch({ type: 'moveTo', to: b })
+    orch.dispatch({ type: 'undoMove' })
+    expect(orch.state.units.find((u) => u.id === 'caocao')!.pos).toEqual(from)
+    expect(orch.uiState.canUndo).toBe(false)
+  })
   it('选中敌方单位被拒绝', () => {
     const { orch, cap } = mkHarness()
     const enemy = orch.state.units.find((u) => u.faction === 'enemy')!
@@ -82,6 +97,31 @@ describe('攻击 / 待机', () => {
     orch.dispatch({ type: 'selectUnit', unitId: 'caocao' })
     orch.dispatch({ type: 'wait' })
     expect(orch.state.units.find((u) => u.id === 'caocao')!.acted).toBe(true)
+    expect(orch.uiState.selectedUnitId).toBeNull()
+  })
+})
+
+describe('道具 / 施法', () => {
+  it('useItem 全链路：满血使用合法，道具消耗、acted、选中清空', () => {
+    const { orch, cap } = mkHarness()
+    orch.dispatch({ type: 'selectUnit', unitId: 'caocao' })
+    orch.dispatch({ type: 'useItem', itemId: 'jinchuang_yao' }) // 满血：治疗量 0 但 itemUsed 照发
+    expect(cap.errors).toEqual([])
+    const cc = orch.state.units.find((u) => u.id === 'caocao')!
+    expect(cc.acted).toBe(true)
+    expect(cc.items).not.toContain('jinchuang_yao')
+    expect(orch.uiState.selectedUnitId).toBeNull()
+  })
+  it('cast 全链路：荀彧自疗（治愈），mp 扣减、acted、选中清空', () => {
+    const { orch, cap } = mkHarness()
+    const xunyu = orch.state.units.find((u) => u.id === 'xunyu')!
+    expect(xunyu.mp).toBe(20) // 前置：strategist 1 级基值，治愈 mpCost 6
+    orch.dispatch({ type: 'selectUnit', unitId: 'xunyu' })
+    orch.dispatch({ type: 'cast', strategyId: 'zhiyu', target: { ...xunyu.pos } })
+    expect(cap.errors).toEqual([])
+    const after = orch.state.units.find((u) => u.id === 'xunyu')!
+    expect(after.acted).toBe(true)
+    expect(after.mp).toBe(14)
     expect(orch.uiState.selectedUnitId).toBeNull()
   })
 })
@@ -120,8 +160,8 @@ describe('对话队列', () => {
   })
 })
 
-/** 测试助手：选中单位的任一可达邻格（不含原地）。 */
-function pickAdjacent(orch: BattleOrchestrator, unitId: string): { x: number; y: number } {
+/** 测试助手：选中单位的第 index 个可达邻格（不含原地）。 */
+function pickAdjacent(orch: BattleOrchestrator, unitId: string, index = 0): { x: number; y: number } {
   const u = orch.state.units.find((x) => x.id === unitId)!
   const neigh = [
     { x: u.pos.x + 1, y: u.pos.y }, { x: u.pos.x - 1, y: u.pos.y },
@@ -131,6 +171,6 @@ function pickAdjacent(orch: BattleOrchestrator, unitId: string): { x: number; y:
     && orch.state.map[c.y][c.x] !== 'water'
     && !orch.state.units.some((o) => o.alive && o.pos.x === c.x && o.pos.y === c.y),
   )
-  if (neigh.length === 0) throw new Error('无可达邻格，改用 moveRangeCells 取一格')
-  return neigh[0]!
+  if (neigh.length <= index) throw new Error('无可达邻格，改用 moveRangeCells 取一格')
+  return neigh[index]!
 }
