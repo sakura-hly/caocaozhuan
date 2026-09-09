@@ -1,4 +1,5 @@
 import type { BattleDef } from '../../engine/types'
+import type { DialogueLine } from './shared'
 import { heroUnit, mobUnit, parseMap } from './shared'
 
 const ZEIBING = { hp: 44, mp: 0, atk: 10, def: 8, spirit: 3, agi: 7 } // 黄巾贼(步兵)
@@ -61,7 +62,7 @@ export const yingchuan: BattleDef = {
   maxTurns: 20,
 }
 
-export interface DialogueLine { speaker: string; text: string }
+export type { DialogueLine }
 
 export const yingchuanDialogues: Record<string, DialogueLine[]> = {
   yc_start: [

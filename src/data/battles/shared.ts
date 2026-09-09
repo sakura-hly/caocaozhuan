@@ -3,6 +3,12 @@ import type { GameData } from '../index'
 import { heroes } from '../heroes'
 import { moveCostFor } from '../../engine/movement'
 
+/** 校验报告：errors 阻断加载；warnings 提示但不阻断。 */
+export interface ValidationReport { errors: string[]; warnings: string[] }
+
+/** 对话行（开场/剧情/触发对话共用）。 */
+export interface DialogueLine { speaker: string; text: string }
+
 export const MAP_LEGEND: Record<string, TerrainId> = {
   '.': 'plain', f: 'forest', m: 'mountain', w: 'water', C: 'city', P: 'camp', G: 'pass', b: 'bridge',
 }
@@ -41,10 +47,10 @@ export function mobUnit(
   }
 }
 
-/** 战役数据静态校验（加载期调用），返回错误列表（空 = 合法）。
- * 带「告警：」前缀的条目为建议性提示（战役仍合法），调用方可按前缀过滤；空数组 = 无任何错误或告警。 */
-export function validateBattleDef(def: BattleDef, data: GameData): string[] {
+/** 战役数据静态校验（加载期调用）：errors 为阻断性问题，warnings 为建议性提示（战役仍合法）。 */
+export function validateBattleDef(def: BattleDef, data: GameData): ValidationReport {
   const errs: string[] = []
+  const warns: string[] = []
   const h = def.map.length
   const w = def.map[0]?.length ?? 0
   if (h < 5 || w < 5) errs.push(`地图尺寸 ${w}x${h} 过小（至少 5x5）`)
@@ -108,7 +114,7 @@ export function validateBattleDef(def: BattleDef, data: GameData): string[] {
       }
     }
     // 【勘误 3】目标仅来自增援时告警（增援落点冲突被丢弃则战役不可胜）
-    if (!inField && inReinf) errs.push(`告警：胜利目标 ${id} 仅来自增援（若增援被丢弃，战役将不可胜）`)
+    if (!inField && inReinf) warns.push(`胜利目标 ${id} 仅来自增援（若增援被丢弃，战役将不可胜）`)
   }
   def.dialogues.forEach((trig) => {
     if (trig.onDeathOf === undefined) return
@@ -120,5 +126,5 @@ export function validateBattleDef(def: BattleDef, data: GameData): string[] {
     errs.push(`坚守 ${def.win.untilTurn} 回合必须小于回合上限 ${def.maxTurns}`)
   }
   if (def.maxTurns < 1) errs.push('回合上限必须 ≥1')
-  return errs
+  return { errors: errs, warnings: warns }
 }

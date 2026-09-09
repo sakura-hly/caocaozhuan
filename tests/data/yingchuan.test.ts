@@ -5,8 +5,8 @@ import { gameData } from '../../src/data'
 import type { BattleDef } from '../../src/engine/types'
 
 describe('颍川之战', () => {
-  it('战役数据校验零错误', () => {
-    expect(validateBattleDef(yingchuan, gameData)).toEqual([])
+  it('战役数据校验零错误零告警', () => {
+    expect(validateBattleDef(yingchuan, gameData)).toEqual({ errors: [], warnings: [] })
   })
   it('16x12 地图；我方 5 人 / 敌方 9 人', () => {
     expect(yingchuan.map.length).toBe(12)
@@ -30,8 +30,8 @@ describe('颍川之战', () => {
       maxTurns: 20,
     }
     const errs = validateBattleDef(broken, gameData)
-    expect(errs.some((e) => e.includes('越界'))).toBe(true)
-    expect(errs.some((e) => e.includes('坚守'))).toBe(true)
+    expect(errs.errors.some((e) => e.includes('越界'))).toBe(true)
+    expect(errs.errors.some((e) => e.includes('坚守'))).toBe(true)
   })
   it('勘误负向：单位与增援 id 重复被拦截', () => {
     const r = yingchuan.reinforcements[0]
@@ -39,14 +39,16 @@ describe('颍川之战', () => {
       ...yingchuan,
       reinforcements: [{ ...r, entries: [{ ...r.entries[0], unit: { ...r.entries[0].unit, id: 'e1' } }] }],
     }
-    expect(validateBattleDef(dup, gameData).some((e) => e.includes('单位 id 重复'))).toBe(true)
+    expect(validateBattleDef(dup, gameData).errors.some((e) => e.includes('单位 id 重复'))).toBe(true)
   })
   it('勘误负向：击破目标为我方单位被拦截', () => {
     const bad: BattleDef = { ...yingchuan, win: { kind: 'killCommander', unitId: 'caocao' } }
-    expect(validateBattleDef(bad, gameData).some((e) => e.includes('应为敌方阵营'))).toBe(true)
+    expect(validateBattleDef(bad, gameData).errors.some((e) => e.includes('应为敌方阵营'))).toBe(true)
   })
   it('勘误负向：击破目标仅来自增援时告警', () => {
     const warn: BattleDef = { ...yingchuan, win: { kind: 'killCommander', unitId: 'r1' } }
-    expect(validateBattleDef(warn, gameData).some((e) => e.includes('仅来自增援'))).toBe(true)
+    const r = validateBattleDef(warn, gameData)
+    expect(r.warnings.some((w) => w.includes('仅来自增援'))).toBe(true)
+    expect(r.errors.some((e) => e.includes('仅来自增援'))).toBe(false)
   })
 })
