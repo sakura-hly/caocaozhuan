@@ -7,7 +7,7 @@ export interface Camera { x: number; y: number }
 export function clampCamera(cam: Camera, mapW: number, mapH: number, viewW: number, viewH: number): Camera {
   const cx = mapW <= viewW ? Math.round((mapW - viewW) / 2) : Math.min(Math.max(0, cam.x), mapW - viewW)
   const cy = mapH <= viewH ? Math.round((mapH - viewH) / 2) : Math.min(Math.max(0, cam.y), mapH - viewH)
-  return { x: cx, y: cy }
+  return { x: Math.round(cx), y: Math.round(cy) }
 }
 
 export function screenToCell(px: number, py: number, cam: Camera): Cell {
