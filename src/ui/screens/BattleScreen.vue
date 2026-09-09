@@ -12,6 +12,9 @@ import { Animator, planAnimations } from '../../render/animator'
 import { TILE, centerOnCell, clampCamera, screenToCell } from '../../render/camera'
 import UnitInfoPanel from '../components/UnitInfoPanel.vue'
 import HoverTooltip from '../components/HoverTooltip.vue'
+import ActionMenu from '../components/ActionMenu.vue'
+import SpellMenu from '../components/SpellMenu.vue'
+import ItemMenu from '../components/ItemMenu.vue'
 
 type MenuMode = 'none' | 'action' | 'attackPick' | 'spellPick' | 'spell' | 'item'
 
@@ -425,23 +428,28 @@ onBeforeUnmount(() => {
       <canvas ref="canvasEl" @mousemove="onMouseMove" @click="onClick" @wheel.prevent="onWheel" />
       <UnitInfoPanel v-if="info" :unit="info.unit" :max-hp="info.maxHp" :max-mp="info.maxMp" />
       <HoverTooltip v-if="tooltip" :x="tooltip.x" :y="tooltip.y" :title="tooltip.title" :lines="tooltip.lines" />
-      <div v-if="menuMode === 'action' && !busy" class="menu">
-        <button :disabled="targets.length === 0" @click="menuMode = 'attackPick'">攻击</button>
-        <button :disabled="spells.length === 0" @click="menuMode = 'spell'">法术</button>
-        <button :disabled="items.length === 0" @click="menuMode = 'item'">道具</button>
-        <button @click="doIntent({ type: 'wait' })">待机</button>
-        <button v-if="ui.canUndo" @click="menuMode = 'none'; doIntent({ type: 'undoMove' })">撤销</button>
-      </div>
-      <div v-else-if="menuMode === 'spell' && !busy" class="menu">
-        <button v-for="s in spells" :key="s.id" @click="pendingSpellId = s.id; menuMode = 'spellPick'">
-          {{ s.name }}（{{ s.mpCost }}MP）
-        </button>
-        <button @click="menuMode = 'action'">返回</button>
-      </div>
-      <div v-else-if="menuMode === 'item' && !busy" class="menu">
-        <button v-for="it in items" :key="it.id" @click="doIntent({ type: 'useItem', itemId: it.id })">{{ it.name }}</button>
-        <button @click="menuMode = 'action'">返回</button>
-      </div>
+      <ActionMenu
+        v-if="menuMode === 'action' && !busy"
+        class="floating"
+        :can-attack="targets.length > 0" :can-cast="spells.length > 0"
+        :can-item="items.length > 0" :can-undo="ui.canUndo"
+        @attack="menuMode = 'attackPick'" @cast="menuMode = 'spell'" @item="menuMode = 'item'"
+        @wait="doIntent({ type: 'wait' })" @undo="menuMode = 'none'; doIntent({ type: 'undoMove' })"
+      />
+      <SpellMenu
+        v-else-if="menuMode === 'spell' && !busy"
+        class="floating"
+        :strategies="spells"
+        @pick="(id: string) => { pendingSpellId = id; menuMode = 'spellPick' }"
+        @back="menuMode = 'action'"
+      />
+      <ItemMenu
+        v-else-if="menuMode === 'item' && !busy"
+        class="floating"
+        :items="items"
+        @use="(id: string) => doIntent({ type: 'useItem', itemId: id })"
+        @back="menuMode = 'action'"
+      />
       <div v-if="toast" class="toast">{{ toast }}</div>
       <div v-if="result" class="overlay">
         <h2>{{ result.won ? '胜 利' : '败 北' }}</h2>
@@ -471,16 +479,7 @@ onBeforeUnmount(() => {
 .hud button:disabled { opacity: 0.45; cursor: default; }
 .holder { position: relative; flex: 1; overflow: hidden; }
 .holder canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: crosshair; }
-.menu {
-  position: absolute; right: 12px; bottom: 12px; z-index: 5; display: flex; flex-direction: column; gap: 6px;
-  padding: 8px; background: rgba(16, 13, 10, 0.92); border: 1px solid #6a5c40; border-radius: 4px;
-}
-.menu button {
-  padding: 6px 18px; font-size: 14px; text-align: left; color: #f0e6c8; background: #2a241c;
-  border: 1px solid #6a5c40; border-radius: 3px; cursor: pointer;
-}
-.menu button:hover:not(:disabled) { background: #4a3f2c; }
-.menu button:disabled { opacity: 0.45; cursor: default; }
+.floating { position: absolute; right: 12px; bottom: 12px; z-index: 5; }
 .toast {
   position: absolute; top: 14px; left: 50%; transform: translateX(-50%); z-index: 8;
   padding: 8px 20px; background: rgba(90, 48, 32, 0.92); border: 1px solid #a05a40;
