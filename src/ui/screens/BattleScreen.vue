@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import type { BattleState, Cell, EngineError, Faction, GameEvent } from '../../engine/types'
 import { gameData } from '../../data'
 import { BattleOrchestrator, type Intent, type UiState } from '../../game/orchestrator'
+import { dialogueLines } from '../../game/bootstrap'
 import { attackTargets, castableStrategies, moveRangeCells, spellTargetCells, usableItems } from '../../game/viewModel'
 import { effectiveStats, hostile, unitAt } from '../../engine/internal'
 import { affinity } from '../../engine/combat'
@@ -15,6 +16,8 @@ import HoverTooltip from '../components/HoverTooltip.vue'
 import ActionMenu from '../components/ActionMenu.vue'
 import SpellMenu from '../components/SpellMenu.vue'
 import ItemMenu from '../components/ItemMenu.vue'
+import DialogueBox from '../components/DialogueBox.vue'
+import ResultBanner from '../components/ResultBanner.vue'
 
 type MenuMode = 'none' | 'action' | 'attackPick' | 'spellPick' | 'spell' | 'item'
 
@@ -38,6 +41,9 @@ const hoverPx = ref({ x: 0, y: 0 })
 const hoverCell = ref<Cell | null>(null)
 const toast = ref<string | null>(null)
 const result = ref<{ won: boolean; turn: number } | null>(null)
+const dialogueId = ref<string | null>(null)
+const dialogueText = computed(() =>
+  dialogueId.value ? dialogueLines(props.battleId, dialogueId.value) : [])
 
 // ---------- 非响应式句柄与动画池 ----------
 let renderer: BattlefieldRenderer | null = null
@@ -182,10 +188,10 @@ function applyRendererState(): void {
   syncHighlights()
 }
 
-/** 终局结算：动画播放中（busy）跳过，待最后一击播毕由 onDone 终结分支补调。 */
+/** 终局结算：动画播放中（busy）或对话展示中（dialogueId）跳过，待二者都结束后置位。 */
 function settleResult(): void {
   const s = state.value
-  if (s && s.finished !== null && !result.value && !busy.value)
+  if (s && s.finished !== null && !result.value && !busy.value && !dialogueId.value)
     result.value = { won: s.finished === 'won', turn: s.turn }
 }
 
@@ -205,10 +211,16 @@ function onOrchState(s: BattleState, next: UiState): void {
   if (!busy.value && pendingEvents.length) startPlayback() // 首批因 state 未落位而池化的批，此处补播
 }
 
-/** T9 阶段对话自动跳过（T11 换 DialogueBox）。 */
+/** T11：逐条展示对话（替换 T9 的自动跳过）。 */
 function drainDialogues(): void {
-  while (orch && orch.uiState.dialogueQueue.length) orch.acknowledgeDialogue()
-  ui.dialogueQueue = orch ? [...orch.uiState.dialogueQueue] : []
+  if (!dialogueId.value && orch && orch.uiState.dialogueQueue.length)
+    dialogueId.value = orch.uiState.dialogueQueue[0]!
+}
+function onDialogueFinished(): void {
+  orch?.acknowledgeDialogue()
+  dialogueId.value = null
+  drainDialogues() // 链式取下一条
+  settleResult() // 队列已空且已终局 → 此刻才弹结算（时序要求，见任务说明）
 }
 
 const ERROR_TEXT: Partial<Record<EngineError['code'], string>> = {
@@ -247,7 +259,7 @@ function inBoard(s: BattleState, c: Cell): boolean {
 
 function onClick(e: MouseEvent): void {
   const s = state.value
-  if (busy.value || !orch || !s || s.finished !== null) return
+  if (busy.value || dialogueId.value || !orch || !s || s.finished !== null) return
   const cell = screenToCell(e.offsetX, e.offsetY, cam)
   const unit = unitAt(s, cell)
   if (menuMode.value === 'attackPick') {
@@ -316,7 +328,7 @@ function pan(dx: number, dy: number): void {
 }
 
 function onKey(e: KeyboardEvent): void {
-  if (result.value || !state.value) return
+  if (result.value || dialogueId.value || !state.value) return
   if (e.key === 'Escape') {
     if (menuMode.value === 'attackPick' || menuMode.value === 'spellPick' || menuMode.value === 'spell' || menuMode.value === 'item') {
       pendingSpellId.value = null
@@ -380,6 +392,7 @@ function restart(): void {
   mapInit = false
   result.value = null
   menuMode.value = 'none'
+  dialogueId.value = null
   pendingSpellId.value = null
   pendingEvents = []
   renderPositions = null
@@ -451,12 +464,12 @@ onBeforeUnmount(() => {
         @back="menuMode = 'action'"
       />
       <div v-if="toast" class="toast">{{ toast }}</div>
-      <div v-if="result" class="overlay">
-        <h2>{{ result.won ? '胜 利' : '败 北' }}</h2>
-        <p>第 {{ result.turn }} 回合{{ result.won ? '告捷' : '战罢' }}</p>
-        <button @click="restart">重新开始</button>
-        <button @click="$emit('exit')">返回标题</button>
-      </div>
+      <ResultBanner
+        v-if="result"
+        :won="result.won" :turn="result.turn" :rewards="[]"
+        @restart="restart" @exit="$emit('exit')"
+      />
+      <DialogueBox v-if="dialogueText.length && !result" :lines="dialogueText" @finished="onDialogueFinished" />
     </div>
   </div>
 </template>
@@ -485,16 +498,4 @@ onBeforeUnmount(() => {
   padding: 8px 20px; background: rgba(90, 48, 32, 0.92); border: 1px solid #a05a40;
   border-radius: 4px; color: #ffd8a0; font-size: 14px;
 }
-.overlay {
-  position: absolute; inset: 0; z-index: 20; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 14px;
-  background: rgba(10, 8, 6, 0.82); color: #f0e6c8;
-}
-.overlay h2 { font-family: 'Songti SC', serif; font-size: 44px; letter-spacing: 16px; margin: 0; }
-.overlay p { color: #9a8f7a; margin: 0; }
-.overlay button {
-  padding: 9px 30px; font-size: 16px; color: #141210; background: #d8b86a;
-  border: none; border-radius: 4px; cursor: pointer;
-}
-.overlay button:hover { background: #f0d28a; }
 </style>
