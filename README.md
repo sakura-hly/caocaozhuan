@@ -13,15 +13,13 @@ Koei 经典战棋 RPG《三国志曹操传》的 Web 复刻（程序化像素风
 ## 架构
 
 - `src/engine/` 纯 TypeScript 战棋引擎，零框架依赖：
-  `apply(state, command, data) // → { ok: true, state, events } | { ok: false, error }`，不可变状态 + 状态内 RNG（可回放）。
+  `apply(state, command, data) → { ok: true, state, events } | { ok: false, error }`，不可变状态 + 状态内 RNG（可回放）。
 - `src/data/` 纯静态数据：兵种/地形/法术/武将/道具/战役。加战役 = 加数据文件。
 - `src/render/` — Canvas 渲染层：像素画/镜头纯函数/战场渲染器/动画规划与播放（零 Vue 依赖）
 - `src/game/` — 编排层：视图模型查询、AI 阵营批执行、BattleOrchestrator（意图→指令）、loadBattle 加载期校验
 - `src/ui/` — Vue 3 组装层：BattleScreen + 菜单/对话/结算/信息面板组件
 - 规则要点：兵种相克（骑>弓>步>骑）、地形加成、天气门禁（雨天禁火）、
   反击/暴击/连击、经验升级（随机成长）、四种胜利条件、启发式 AI。
-
-## 里程碑
 
 ## 玩法操作（颍川之战）
 
