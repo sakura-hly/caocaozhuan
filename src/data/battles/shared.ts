@@ -24,13 +24,14 @@ export function parseMap(rows: string[]): TerrainId[][] {
 /** 从武将档案生成单位（初始 HP/MP 取满值）。 */
 export function heroUnit(
   heroId: string, faction: Faction, pos: Cell,
-  o: { level?: number; equipment?: Partial<Record<ItemSlot, string>>; items?: string[] } = {},
+  o: { level?: number; base?: Stats; equipment?: Partial<Record<ItemSlot, string>>; items?: string[] } = {},
 ): Unit {
   const h = heroes[heroId]
   if (!h) throw new Error(`未知武将: ${heroId}`)
+  const base = o.base ? { ...o.base } : { ...h.base }
   return {
     id: heroId, heroId, name: h.name, faction, classId: h.classId,
-    level: o.level ?? 1, exp: 0, base: { ...h.base }, hp: h.base.hp, mp: h.base.mp,
+    level: o.level ?? 1, exp: 0, base, hp: base.hp, mp: base.mp,
     pos: { ...pos }, equipment: { ...o.equipment }, items: [...(o.items ?? [])],
     statuses: [], moved: false, acted: false, alive: true,
   }
