@@ -69,8 +69,13 @@ export function validateBattleDef(def: BattleDef, data: GameData): ValidationRep
     }
   }
   const checkGear = (u: Unit) => {
-    for (const id of Object.values(u.equipment)) {
-      if (id !== undefined && !data.items[id]) errs.push(`单位 ${u.id} 引用未知装备 ${id}`)
+    for (const [slot, id] of Object.entries(u.equipment) as Array<[ItemSlot, string | undefined]>) {
+      if (id === undefined) continue
+      const it = data.items[id]
+      if (!it) { errs.push(`单位 ${u.id} 引用未知装备 ${id}`); continue }
+      if (it.kind !== slot) errs.push(`单位 ${u.id} 装备 ${it.name} 类型不符（${slot} 槽）`)
+      if (it.allowedClasses && !it.allowedClasses.includes(u.classId))
+        errs.push(`单位 ${u.id} 装备 ${it.name} 兵种不符（${u.classId}）`)
     }
     for (const id of u.items) if (!data.items[id]) errs.push(`单位 ${u.id} 携带未知道具 ${id}`)
   }
@@ -124,6 +129,12 @@ export function validateBattleDef(def: BattleDef, data: GameData): ValidationRep
   })
   if (def.win.kind === 'survive' && def.win.untilTurn >= def.maxTurns) {
     errs.push(`坚守 ${def.win.untilTurn} 回合必须小于回合上限 ${def.maxTurns}`)
+  }
+  for (const d of def.drops ?? []) {
+    const inField = def.units.some((u) => u.id === d.unitId)
+    const inReinf = def.reinforcements.some((r) => r.entries.some((e) => e.unit.id === d.unitId))
+    if (!inField && !inReinf) errs.push(`掉落引用不存在的单位 ${d.unitId}`)
+    if (!data.items[d.itemId]) errs.push(`掉落引用未知道具 ${d.itemId}`)
   }
   if (def.maxTurns < 1) errs.push('回合上限必须 ≥1')
   return { errors: errs, warnings: warns }

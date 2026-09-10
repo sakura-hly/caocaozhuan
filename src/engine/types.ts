@@ -90,6 +90,7 @@ export interface Unit {
 export interface ReinforcementEntry { unit: Unit; at: Cell }
 export interface ReinforcementDef { turn: number; entries: ReinforcementEntry[] }
 export interface TreasureCell { cell: Cell; itemId: string; found: boolean }
+export interface DropDef { unitId: string; itemId: string }
 /** 对话触发器：turn（回合开始时触发）与 onDeathOf（指定单位阵亡时触发）二选一。 */
 export type DialogueTrigger =
   | { turn: number; onDeathOf?: undefined; dialogueId: string }
@@ -110,6 +111,7 @@ export interface BattleDef {
   units: Unit[]
   reinforcements: ReinforcementDef[]
   treasureCells: TreasureCell[]
+  drops?: DropDef[] // 击破指定单位掉落（结算时入库，见 game/campaign.ts settleBattle）
   dialogues: DialogueTrigger[]
   weather: Weather
   weatherScript: WeatherScriptEntry[]
