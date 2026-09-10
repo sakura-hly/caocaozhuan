@@ -3,7 +3,11 @@ import { gameData } from '../../src/data'
 import {
   CAMPAIGN_BATTLES, newGame, currentBattleId,
   equipItem, unequipItem, assignItem, unassignItem,
+  deployBattle,
 } from '../../src/game/campaign'
+import { battles } from '../../src/data/battles'
+import { assertBattleValid } from '../../src/game/bootstrap'
+import { initBattle } from '../../src/engine'
 
 describe('newGame / 进度查询', () => {
   it('初始 roster 来自第一场战役的我方武将（含模板装备）', () => {
@@ -93,5 +97,46 @@ describe('装备/携带操作（纯函数、不可变）', () => {
     expect(assignItem(c, 'huaxiong', 'jinchuang_yao', gameData)).toMatchObject({ ok: false }) // 不在名册
     expect(unassignItem(c, 'xunyu', 'huanshen_dan', gameData)).toMatchObject({ ok: false }) // 未携带
     expect(unassignItem(c, 'huaxiong', 'jinchuang_yao', gameData)).toMatchObject({ ok: false }) // 不在名册
+  })
+})
+
+describe('deployBattle', () => {
+  it('roster 属性注入我方单位：等级/经验/裸属性/装备/携带', () => {
+    const c = newGame()
+    const tuned = {
+      ...c,
+      roster: c.roster.map((m) => m.heroId === 'caocao'
+        ? { ...m, level: 5, exp: 42, base: { ...m.base, hp: m.base.hp + 12, atk: m.base.atk + 3 },
+            equipment: { weapon: 'qinggang_sword' }, items: ['jinchuang_yao', 'huanshen_dan'] }
+        : m),
+    }
+    const def = deployBattle(battles.yingchuan, tuned, gameData)
+    const cc = def.units.find((u) => u.id === 'caocao')!
+    expect(cc.level).toBe(5)
+    expect(cc.exp).toBe(42)
+    expect(cc.base.hp).toBe(tuned.roster[0]!.base.hp)
+    expect(cc.equipment.weapon).toBe('qinggang_sword')
+    expect(cc.items).toEqual(['jinchuang_yao', 'huanshen_dan'])
+    // 敌方单位不受影响
+    expect(def.units.find((u) => u.id === 'e1')!.level).toBe(1)
+  })
+  it('血蓝按含装备满值：装明光铠后初始 HP = 裸属性+10', () => {
+    const c = newGame()
+    const m = c.roster.find((r) => r.heroId === 'caoren')!
+    const equipped = { ...c, roster: c.roster.map((r) => r.heroId === 'caoren'
+      ? { ...r, equipment: { armor: 'mingguang_armor' } } : r) }
+    const def = deployBattle(battles.yingchuan, equipped, gameData)
+    const cr = def.units.find((u) => u.id === 'caoren')!
+    expect(cr.hp).toBe(m.base.hp + 10)
+  })
+  it('名册没有的武将按模板参战（新武将随战役登场）', () => {
+    const c = { ...newGame(), roster: newGame().roster.filter((m) => m.heroId !== 'xunyu') }
+    const def = deployBattle(battles.yingchuan, c, gameData)
+    expect(def.units.find((u) => u.id === 'xunyu')).toBeDefined()
+  })
+  it('注入后的定义仍通过加载校验且可 initBattle', () => {
+    const def = deployBattle(battles.yingchuan, newGame(), gameData)
+    expect(() => assertBattleValid(def, 'yingchuan', gameData)).not.toThrow()
+    expect(initBattle(def, 1).battleId).toBe('yingchuan')
   })
 })

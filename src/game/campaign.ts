@@ -1,7 +1,8 @@
-import type { ItemSlot, Stats } from '../engine/types'
+import type { BattleDef, ItemSlot, Stats, Unit } from '../engine/types'
 import type { GameData } from '../data'
 import { gameData } from '../data'
 import { battles } from '../data/battles'
+import { effectiveStats } from '../engine/internal'
 
 /** 战役时间轴（M3 = 前 3 场）。 */
 export const CAMPAIGN_BATTLES: readonly string[] = ['yingchuan', 'sishui', 'hulao']
@@ -109,4 +110,22 @@ export function unassignItem(c: CampaignState, heroId: string, itemId: string, _
   return r.ok
     ? { ok: true, campaign: { ...r.campaign, inventory: [...c.inventory, itemId] } }
     : r
+}
+
+/** 整备注入：roster 属性覆盖战役定义中的我方武将单位；名册外武将按模板参战（结算时自动入册）。 */
+export function deployBattle(def: BattleDef, c: CampaignState, data: GameData = gameData): BattleDef {
+  const units = def.units.map((u) => {
+    if (u.faction !== 'player' || u.heroId === '') return u
+    const m = c.roster.find((r) => r.heroId === u.heroId)
+    if (!m) return u
+    const merged: Unit = {
+      ...u, level: m.level, exp: m.exp, base: { ...m.base },
+      equipment: { ...m.equipment }, items: [...m.items],
+    }
+    const eff = effectiveStats(merged, data)
+    merged.hp = eff.hp
+    merged.mp = eff.mp
+    return merged
+  })
+  return { ...def, units }
 }
