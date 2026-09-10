@@ -66,7 +66,11 @@ function onChoicePicked(optionIndex: number): void {
   const opt = ch.options[optionIndex]
   if (!opt) return
   const answered = applyChoice(campaign.value, ch.id, optionIndex)
-  if (!answered.ok) { pendingChoice.value = null; return }
+  if (!answered.ok) {
+    console.warn(`抉择落账被拒: ${ch.id}（${answered.error}）——放行结算屏`)
+    pendingChoice.value = null
+    return
+  }
   let c = addMorality(answered.campaign, opt.morality)
   if (opt.itemRewards?.length) c = { ...c, inventory: [...c.inventory, ...opt.itemRewards] }
   campaign.value = c
