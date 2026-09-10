@@ -61,6 +61,16 @@ export function decideUnitAction(state: BattleState, unitId: string, data: GameD
           const score = sum * 1.2
           if (score > best.score) best = { score, cmds: [...moveCmd, { type: 'cast', unitId, strategyId: s.id, target: { x: t.pos.x, y: t.pos.y } }] }
         }
+      } else if (s.kind === 'debuff') {
+        // M4（M2 登记项清偿）：军师优先削弱最高威胁目标；已带状态不叠（防无限施法——原版敌军师作风）
+        for (const t of foes) {
+          if (manhattan(cell, t.pos) > s.range) continue
+          if (t.statuses.length > 0) continue
+          const score = 14 + effectiveStats(t, data).atk * 1.2 // 威胁越高越值得削弱
+          if (score > best.score) {
+            best = { score, cmds: [...moveCmd, { type: 'cast', unitId, strategyId: s.id, target: { x: t.pos.x, y: t.pos.y } }] }
+          }
+        }
       }
     }
   }

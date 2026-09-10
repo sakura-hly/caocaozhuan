@@ -113,3 +113,50 @@ describe('decideUnitAction · apply 契约', () => {
     applyAll(s, 'e_tao', cmds)
   })
 })
+
+describe('AI debuff 施法（M4 清偿 M2 登记项）', () => {
+  // 注册表口径：pojia/xuanyun/yaowu 的 allowedClasses 均为 ['taoist'] —— 持法者是道士（如郭嘉），非军师
+  const eTao = () =>
+    mkUnit({ id: 'e_tao', faction: 'enemy', classId: 'taoist', pos: { x: 4, y: 2 },
+      base: { hp: 40, mp: 20, atk: 4, def: 4, spirit: 18, agi: 8 }, mp: 20 })
+  const dianwei = () =>
+    mkUnit({ id: 'dianwei', pos: { x: 5, y: 2 }, // manhattan 1 ≤ pojia.range 3；atk 30 = 高威胁
+      base: { hp: 60, mp: 0, atk: 30, def: 10, spirit: 4, agi: 6 } })
+
+  it('持 debuff 法术的道士对射程内最高威胁敌单位施放，而非普攻', () => {
+    const s = mkState({ units: [eTao(), dianwei()] })
+    const cmds = decideUnitAction(s, 'e_tao', gameData)
+    const cast = cmds.find((c) => c.type === 'cast')
+    expect(cast).toBeDefined()
+    expect(cast && cast.type === 'cast' && cast.strategyId).toBe('pojia') // 同分严格 > 保留首个达标 debuff
+    expect(cast && cast.type === 'cast' && cast.target).toEqual({ x: 5, y: 2 })
+  })
+
+  it('目标已带任意状态时跳过（防无限叠 debuff）', () => {
+    const s = mkState({
+      units: [eTao(), mkUnit({ ...dianwei(), statuses: [{ kind: 'defdown', turns: 2 }] })],
+    })
+    const cmds = decideUnitAction(s, 'e_tao', gameData)
+    const debuffs = new Set(['pojia', 'xuanyun', 'yaowu'])
+    expect(cmds.some((c) => c.type === 'cast' && debuffs.has(c.strategyId))).toBe(false)
+  })
+
+  it('mp 不足不施', () => {
+    const s = mkState({
+      units: [
+        mkUnit({ id: 'e_tao', faction: 'enemy', classId: 'taoist', pos: { x: 4, y: 2 },
+          base: { hp: 40, mp: 4, atk: 4, def: 4, spirit: 18, agi: 8 }, mp: 4 }), // mp 4 < 全部 debuff 最低消耗 5
+        dianwei(),
+      ],
+    })
+    const cmds = decideUnitAction(s, 'e_tao', gameData)
+    expect(cmds.some((c) => c.type === 'cast')).toBe(false)
+  })
+
+  it('debuff 施法链：[可选 move] + cast 全链 ok 且链尾 acted（AI 校验谓词不偏离引擎）', () => {
+    const s = mkState({ factionIndex: 1, units: [eTao(), dianwei()] }) // 敌方回合
+    const cmds = decideUnitAction(s, 'e_tao', gameData)
+    expect(cmds.some((c) => c.type === 'cast')).toBe(true)
+    applyAll(s, 'e_tao', cmds)
+  })
+})
