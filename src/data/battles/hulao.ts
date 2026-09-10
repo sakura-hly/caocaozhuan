@@ -41,7 +41,7 @@ export const hulao: BattleDef = {
     heroUnit('guanyu', 'ally', { x: 7, y: 5 }, { level: 4, base: GY4 }),
     heroUnit('zhangfei', 'ally', { x: 7, y: 7 }, { level: 4, base: ZF4 }),
     // 敌方
-    heroUnit('lvbu', 'enemy', { x: 15, y: 5 }, { level: 8, base: { hp: 96, mp: 0, atk: 21, def: 13, spirit: 6, agi: 13 } }),
+    heroUnit('lvbu', 'enemy', { x: 15, y: 5 }, { level: 8, base: { hp: 66, mp: 0, atk: 21, def: 13, spirit: 6, agi: 13 } }),
     mobUnit('c1', '并州骑兵', 'cavalry', 'enemy', { x: 14, y: 3 }, BINGZHOU),
     mobUnit('c2', '并州骑兵', 'cavalry', 'enemy', { x: 16, y: 4 }, BINGZHOU),
     mobUnit('c3', '并州骑兵', 'cavalry', 'enemy', { x: 14, y: 7 }, BINGZHOU),
