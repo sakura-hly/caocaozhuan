@@ -35,7 +35,7 @@ export const puyang: BattleDef = {
     heroUnit('xunyu', 'player', { x: 1, y: 6 }),
     heroUnit('guojia', 'player', { x: 3, y: 6 }), // 本关新参战——我方首个 debuff 施法者（taoist 才持 pojia/xuanyun/yaowu）
     // 敌方（濮阳城内，竖城墙 x=13 三缺口 y2/y6/y9 为三门）
-    // 吕布复战：战场内 base 覆写（虎牢为 hp66/atk21/def13）——hp/atk 含八连战标定下调（沿用 M3 虎牢「最小可胜值」先例）；
+    // 吕布复战：战场内 base 覆写（虎牢为 hp66/atk21/def13）——hp 72→57 为八连战标定下调，atk 19 未动（沿用 M3 虎牢「最小可胜值」先例）；
     // 标级 8 对齐虎牢：level 纯面板数字，同一敌将后一关不应肉眼倒退
     heroUnit('lvbu', 'enemy', { x: 16, y: 2 }, { level: 8, base: { hp: 57, mp: 0, atk: 19, def: 12, spirit: 5, agi: 13 } }), // 城心
     heroUnit('chengong', 'enemy', { x: 17, y: 1 }, { level: 6, base: { hp: 43, mp: 12, atk: 8, def: 8, spirit: 14, agi: 9 } }), // 城内后排（hp/mp 标定下调：落石仅 1 发，防 AI 自打下法术三连秒）
