@@ -1,9 +1,7 @@
-import type { BattleDef, BattleState, ItemSlot, Stats, Unit } from '../engine/types'
+import type { ItemSlot, Stats } from '../engine/types'
 import type { GameData } from '../data'
 import { gameData } from '../data'
 import { battles } from '../data/battles'
-import { effectiveStats } from '../engine/internal'
-import { EXP_PER_LEVEL } from '../engine/growth'
 
 /** 战役时间轴（M3 = 前 3 场）。 */
 export const CAMPAIGN_BATTLES: readonly string[] = ['yingchuan', 'sishui', 'hulao']
@@ -101,12 +99,13 @@ export function assignItem(c: CampaignState, heroId: string, itemId: string, dat
     : r
 }
 
-/** 取回：武将消耗品 → 仓库。 */
+/** 取回：武将消耗品 → 仓库（同名消耗品只取回一份，与仓库移除语义对齐）。 */
 export function unassignItem(c: CampaignState, heroId: string, itemId: string, _data: GameData = gameData): OpResult {
   const m = memberOf(c, heroId)
   if (!m) return { ok: false, error: `武将不在名册: ${heroId}` }
-  if (!m.items.includes(itemId)) return { ok: false, error: `未携带: ${itemId}` }
-  const r = withRoster(c, heroId, (x) => ({ ...x, items: x.items.filter((i) => i !== itemId) }))
+  const idx = m.items.indexOf(itemId)
+  if (idx < 0) return { ok: false, error: `未携带: ${itemId}` }
+  const r = withRoster(c, heroId, (x) => ({ ...x, items: x.items.filter((_, i) => i !== idx) }))
   return r.ok
     ? { ok: true, campaign: { ...r.campaign, inventory: [...c.inventory, itemId] } }
     : r

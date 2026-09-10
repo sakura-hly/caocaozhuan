@@ -33,8 +33,7 @@ describe('装备/携带操作（纯函数、不可变）', () => {
     expect(r1.ok).toBe(true)
     if (r1.ok) {
       expect(r1.campaign.roster.find((m) => m.heroId === 'caocao')!.equipment.weapon).toBe('qinggang_sword')
-      expect(r1.campaign.inventory).toContain('iron_sword')
-      expect(r1.campaign.inventory).not.toContain('qinggang_sword')
+      expect(r1.campaign.inventory).toEqual(['iron_armor', 'iron_sword']) // 移除青釭剑、旧铁剑 push 到末尾
       expect(c.roster.find((m) => m.heroId === 'caocao')!.equipment.weapon).toBe('iron_sword') // 原状态未被改
     }
     // 夏侯惇(cavalry)装青釭剑：兵种不符
@@ -51,7 +50,7 @@ describe('装备/携带操作（纯函数、不可变）', () => {
     const c = newGame()
     const r = unequipItem(c, 'caocao', 'weapon', gameData)
     expect(r.ok).toBe(true)
-    if (r.ok) expect(r.campaign.inventory).toContain('iron_sword')
+    if (r.ok) expect(r.campaign.inventory).toEqual(['jinchuang_yao', 'jinchuang_yao', 'huanshen_dan', 'iron_sword'])
   })
   it('assign/unassign 仅限消耗品', () => {
     let c = newGame()
@@ -59,10 +58,40 @@ describe('装备/携带操作（纯函数、不可变）', () => {
     expect(r1.ok).toBe(true)
     if (r1.ok) {
       expect(r1.campaign.roster.find((m) => m.heroId === 'xunyu')!.items).toContain('huanshen_dan')
+      expect(r1.campaign.inventory).toEqual(['jinchuang_yao', 'jinchuang_yao'])
       const r2 = unassignItem(r1.campaign, 'xunyu', 'huanshen_dan', gameData)
-      expect(r2.ok && r2.campaign.inventory).toContain('huanshen_dan')
+      expect(r2.ok && r2.campaign.inventory).toEqual(['jinchuang_yao', 'jinchuang_yao', 'huanshen_dan'])
     }
     const bad = assignItem(c, 'xunyu', 'iron_sword', gameData) // 非消耗品
     expect(bad).toMatchObject({ ok: false })
+  })
+  it('unassign 同名消耗品只取回一份（数量守恒）', () => {
+    const base = newGame()
+    const c0 = { ...base, roster: base.roster.map((m) => (m.heroId === 'xunyu' ? { ...m, items: [] } : m)) }
+    const r1 = assignItem(c0, 'xunyu', 'jinchuang_yao', gameData)
+    const r2 = r1.ok ? assignItem(r1.campaign, 'xunyu', 'jinchuang_yao', gameData) : r1
+    expect(r2.ok).toBe(true)
+    if (!r2.ok) return
+    expect(r2.campaign.inventory).toEqual(['huanshen_dan']) // 仓库两瓶全部分配出去
+    expect(r2.campaign.roster.find((m) => m.heroId === 'xunyu')!.items).toEqual(['jinchuang_yao', 'jinchuang_yao'])
+    const back = unassignItem(r2.campaign, 'xunyu', 'jinchuang_yao', gameData)
+    expect(back.ok).toBe(true)
+    if (back.ok) {
+      expect(back.campaign.roster.find((m) => m.heroId === 'xunyu')!.items).toEqual(['jinchuang_yao'])
+      expect(back.campaign.inventory).toEqual(['huanshen_dan', 'jinchuang_yao']) // 恰好回来一瓶
+    }
+  })
+  it('错误分支收口：未知物品/未知武将/不在名册/空槽位/不在仓库/未携带', () => {
+    const c = newGame()
+    const emptyInv = { ...newGame(), inventory: [] }
+    expect(equipItem(c, 'caocao', 'weapon', 'nope', gameData)).toMatchObject({ ok: false }) // 未知物品
+    expect(equipItem(c, 'nope', 'weapon', 'iron_sword', gameData)).toMatchObject({ ok: false }) // 未知武将
+    expect(equipItem(c, 'huaxiong', 'weapon', 'iron_sword', gameData)).toMatchObject({ ok: false }) // 武将不在名册
+    expect(unequipItem(c, 'caocao', 'accessory', gameData)).toMatchObject({ ok: false }) // 空槽位
+    expect(unequipItem(c, 'huaxiong', 'weapon', gameData)).toMatchObject({ ok: false }) // 不在名册
+    expect(assignItem(emptyInv, 'xunyu', 'jinchuang_yao', gameData)).toMatchObject({ ok: false }) // 不在仓库
+    expect(assignItem(c, 'huaxiong', 'jinchuang_yao', gameData)).toMatchObject({ ok: false }) // 不在名册
+    expect(unassignItem(c, 'xunyu', 'huanshen_dan', gameData)).toMatchObject({ ok: false }) // 未携带
+    expect(unassignItem(c, 'huaxiong', 'jinchuang_yao', gameData)).toMatchObject({ ok: false }) // 不在名册
   })
 })
