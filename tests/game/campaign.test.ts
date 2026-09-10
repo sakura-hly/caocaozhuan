@@ -119,6 +119,8 @@ describe('deployBattle', () => {
     expect(cc.items).toEqual(['jinchuang_yao', 'huanshen_dan'])
     // 敌方单位不受影响
     expect(def.units.find((u) => u.id === 'e1')!.level).toBe(1)
+    // 原 def 未被改（模块级 battles 单例只读契约）
+    expect(battles.yingchuan.units.find((u) => u.id === 'caocao')!.level).toBe(1)
   })
   it('血蓝按含装备满值：装明光铠后初始 HP = 裸属性+10', () => {
     const c = newGame()
@@ -129,10 +131,20 @@ describe('deployBattle', () => {
     const cr = def.units.find((u) => u.id === 'caoren')!
     expect(cr.hp).toBe(m.base.hp + 10)
   })
+  it('MP 按含装备满值：装太平要术后初始 MP = 裸属性+15', () => {
+    const c = newGame()
+    const m = c.roster.find((r) => r.heroId === 'xunyu')!
+    const equipped = { ...c, roster: c.roster.map((r) => r.heroId === 'xunyu'
+      ? { ...r, equipment: { accessory: 'taiping_book' } } : r) }
+    const def = deployBattle(battles.yingchuan, equipped, gameData)
+    const xy = def.units.find((u) => u.id === 'xunyu')!
+    expect(xy.mp).toBe(m.base.mp + 15)
+  })
   it('名册没有的武将按模板参战（新武将随战役登场）', () => {
     const c = { ...newGame(), roster: newGame().roster.filter((m) => m.heroId !== 'xunyu') }
     const def = deployBattle(battles.yingchuan, c, gameData)
-    expect(def.units.find((u) => u.id === 'xunyu')).toBeDefined()
+    const xy = def.units.find((u) => u.id === 'xunyu')!
+    expect(xy).toBe(battles.yingchuan.units.find((u) => u.id === 'xunyu')) // 未被改写：原模板引用直返
   })
   it('注入后的定义仍通过加载校验且可 initBattle', () => {
     const def = deployBattle(battles.yingchuan, newGame(), gameData)
