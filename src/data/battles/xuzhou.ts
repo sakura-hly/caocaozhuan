@@ -2,6 +2,7 @@ import type { BattleDef } from '../../engine/types'
 import type { DialogueLine } from './shared'
 import { heroUnit, mobUnit, parseMap } from './shared'
 
+// 敌方杂兵 atk 为八连战标定值（各 -2，原始 13/13/8）——泛用 AI 自打四 seed 可胜口径
 const DANYANG = { hp: 52, mp: 0, atk: 11, def: 9, spirit: 3, agi: 7 }  // 丹阳兵(步兵)——陶谦精锐，守两桥头与东岸
 const XUZHOU_GONG = { hp: 44, mp: 0, atk: 11, def: 6, spirit: 4, agi: 9 } // 徐州弓手(城墙)
 const TAO_MULIAO = { hp: 48, mp: 24, atk: 6, def: 8, spirit: 14, agi: 9 } // 陶谦幕僚(军师)——zhiyu 治疗保主将

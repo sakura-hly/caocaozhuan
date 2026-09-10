@@ -11,7 +11,8 @@ const factionOf = (s: BattleState) => s.factionOrder[s.factionIndex]
 /**
  * reach 胜利关护送：通用 AI 只扑最近敌人，绝不会护送 win.unitId 前往目标格，reach 关自动对局必超时——
  * 这是测试助手缺 reach 意识，不是数据 bug。目标单位所属阵营回合开始时先手操其走向目标格
- * （可停留格中曼哈顿距离最小者，并列任取），move+wait 后照常 runFactionTurn（自动跳过已行动单位，队友照旧 AI 断后）。
+ * （可停留格中曼哈顿距离最小者，并列取先入者——严格小于比较 + 稳定遍历序，结果确定，带 seed 测试可复现），
+ * move+wait 后照常 runFactionTurn（自动跳过已行动单位，队友照旧 AI 断后）。
  */
 function escortReachUnit(def: BattleDef, s: BattleState, errors: string[]): BattleState {
   if (def.win.kind !== 'reach') return s

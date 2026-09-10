@@ -2,6 +2,7 @@ import type { BattleDef } from '../../engine/types'
 import type { DialogueLine } from './shared'
 import { heroUnit, mobUnit, parseMap } from './shared'
 
+// 敌方杂兵 atk 为八连战标定值（各 -2，原始 12/13/8/14）——泛用 AI 自打四 seed 可胜口径
 const HUANGJIN = { hp: 54, mp: 0, atk: 10, def: 8, spirit: 3, agi: 7 }  // 黄巾贼(步兵)
 const HUANGJIN_GONG = { hp: 44, mp: 0, atk: 11, def: 6, spirit: 4, agi: 9 } // 黄巾弓手
 const HUANGJIN_DAO = { hp: 42, mp: 18, atk: 6, def: 6, spirit: 12, agi: 8 } // 黄巾道士（pojia/yaowu 由兵种放行）
