@@ -4,12 +4,12 @@ import type { CampaignState } from '../../game/campaign'
 import { CAMPAIGN_BATTLES, currentBattleId } from '../../game/campaign'
 import { battles } from '../../data/battles'
 import { gameData } from '../../data'
-import { saveSlot, loadSlot, slotInfo, serialize, deserialize, localStorageAdapter, type SlotKey } from '../../game/saves'
+import { saveSlot, loadSlot, slotInfo, serialize, deserialize, localStorageAdapter, SLOT_KEYS, type SlotKey } from '../../game/saves'
 
 const props = defineProps<{ campaign: CampaignState }>()
 const emit = defineEmits<{ (e: 'prep'): void; (e: 'loaded', c: CampaignState): void; (e: 'toTitle'): void }>()
 
-const manualSlots: SlotKey[] = ['1', '2', '3']
+const manualSlots = SLOT_KEYS.filter((k) => k !== 'auto')
 const notice = ref<string | null>(null)
 const fileEl = ref<HTMLInputElement | null>(null)
 
@@ -20,11 +20,14 @@ const rows = computed(() => CAMPAIGN_BATTLES.map((id, i) => ({
   state: i < cleared.value ? 'cleared' : i === cleared.value ? 'current' : 'locked',
 })))
 
-function infoOf(slot: SlotKey) { return slotInfo(localStorageAdapter, slot, gameData) }
+// localStorage 读取无响应性，且连续保存同一档位时 notice 同值被 Object.is 短路——saveTick 自增是显式刷新信号
+const saveTick = ref(0)
+function infoOf(slot: SlotKey) { void saveTick.value; return slotInfo(localStorageAdapter, slot, gameData) }
 function fmt(t: number | null) { return t === null ? '—' : new Date(t).toLocaleString() }
 
 function save(slot: SlotKey): void {
   saveSlot(localStorageAdapter, slot, props.campaign)
+  saveTick.value++
   notice.value = `已保存到档位 ${slot}`
 }
 function load(slot: SlotKey): void {
@@ -52,6 +55,7 @@ function onImportFile(e: Event): void {
     if (!c) { notice.value = '导入失败：文件不是有效的存档'; return }
     emit('loaded', c)
   }
+  reader.onerror = () => { notice.value = '导入失败：无法读取文件' }
   reader.readAsText(file)
 }
 </script>
