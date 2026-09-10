@@ -29,6 +29,28 @@ describe('存档序列化', () => {
     expect(deserialize(serialize({ ...newGame(), version: 1 }, 1).replace('"progress":0', '"progress":"x"'), gameData)).toBeNull()
     expect(deserialize('{"v":1,"savedAt":1,"campaign":{"version":1,"progress":0,"roster":[{"heroId":"nope","level":1,"exp":0,"base":{},"equipment":{},"items":[]}],"inventory":[]}}', gameData)).toBeNull()
   })
+  it('数值域：非整数 progress / Infinity 属性 → null', () => {
+    expect(deserialize(serialize({ ...newGame(), progress: 1.5 }, 1), gameData)).toBeNull()
+    // 1e999 是合法 JSON，JSON.parse 得 Infinity —— 必须被有限性检查挡下
+    const inf = JSON.stringify({ v: 1, savedAt: 1, campaign: { ...newGame(), roster: [{ ...newGame().roster[0]!, base: { ...newGame().roster[0]!.base, hp: 1e999 } }] } })
+    expect(deserialize(inf, gameData)).toBeNull()
+  })
+  it('原型链穿透：__proto__/constructor 作为 id → null', () => {
+    const proto = JSON.stringify({ v: 1, savedAt: 1, campaign: { ...newGame(), inventory: ['__proto__'] } })
+    expect(deserialize(proto, gameData)).toBeNull()
+    const ctor = JSON.stringify({ v: 1, savedAt: 1, campaign: { ...newGame(), roster: [{ ...newGame().roster[0]!, heroId: 'constructor' }] } })
+    expect(deserialize(ctor, gameData)).toBeNull()
+  })
+  it('槽位键域与物品类型：幻影槽 / 携带非消耗品 / 名册重复 heroId → null', () => {
+    const ghostSlot = JSON.stringify({ v: 1, savedAt: 1, campaign: { ...newGame(), roster: [{ ...newGame().roster[0]!, equipment: { foo: 'iron_sword' } }] } })
+    expect(deserialize(ghostSlot, gameData)).toBeNull()
+    const wrongKind = JSON.stringify({ v: 1, savedAt: 1, campaign: { ...newGame(), roster: [{ ...newGame().roster[0]!, equipment: { weapon: 'jinchuang_yao' } }] } })
+    expect(deserialize(wrongKind, gameData)).toBeNull()
+    const nonConsumable = JSON.stringify({ v: 1, savedAt: 1, campaign: { ...newGame(), roster: [{ ...newGame().roster[0]!, items: ['iron_sword'] }] } })
+    expect(deserialize(nonConsumable, gameData)).toBeNull()
+    const dup = JSON.stringify({ v: 1, savedAt: 1, campaign: { ...newGame(), roster: [...newGame().roster, newGame().roster[0]!] } })
+    expect(deserialize(dup, gameData)).toBeNull()
+  })
 })
 
 describe('槽位读写', () => {
@@ -45,6 +67,9 @@ describe('槽位读写', () => {
     st.dump.set('caocaozhuan:save:1', '{oops')
     expect(slotInfo(st, '1', gameData).status).toBe('corrupt')
     expect(loadSlot(st, '1', gameData)).toBeNull()
+    // 合法 JSON 但 campaign 不合法 → 同样 corrupt（savedAt 非数字也拒）
+    st.dump.set('caocaozhuan:save:1', '{"v":1,"savedAt":"abc","campaign":{}}')
+    expect(slotInfo(st, '1', gameData).status).toBe('corrupt')
   })
   it('中途存档往返：颍川结算后的进度可完整恢复', () => {
     const c1 = newGame()
