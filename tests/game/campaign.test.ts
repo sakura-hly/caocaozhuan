@@ -3,7 +3,7 @@ import { gameData } from '../../src/data'
 import {
   CAMPAIGN_BATTLES, newGame, currentBattleId,
   equipItem, unequipItem, assignItem, unassignItem,
-  deployBattle,
+  deployBattle, settleBattle,
 } from '../../src/game/campaign'
 import { battles } from '../../src/data/battles'
 import { assertBattleValid } from '../../src/game/bootstrap'
@@ -150,5 +150,64 @@ describe('deployBattle', () => {
     const def = deployBattle(battles.yingchuan, newGame(), gameData)
     expect(() => assertBattleValid(def, 'yingchuan', gameData)).not.toThrow()
     expect(initBattle(def, 1).battleId).toBe('yingchuan')
+  })
+})
+
+describe('settleBattle', () => {
+  it('胜利：收割等级/经验/裸属性/剩余携带，宝物与掉落入库，推进进度', () => {
+    const c = { ...newGame(), inventory: [] }
+    const st = initBattle(battles.yingchuan, 42)
+    const def = { ...battles.yingchuan, drops: [{ unitId: 'zl', itemId: 'taiping_book' }] }
+    // 构造战后终局：敌全灭、曹操升级、踩了宝物格
+    const units = st.units.map((u) =>
+      u.faction === 'enemy' ? { ...u, alive: false } : u)
+    const caocao = units.find((u) => u.id === 'caocao')!
+    const idx = units.indexOf(caocao)
+    units[idx] = { ...caocao, level: 2, exp: 55, base: { ...caocao.base, hp: caocao.base.hp + 2 } }
+    const final = { ...st, units, finished: 'won' as const, rewards: ['iron_sword'] }
+    const r = settleBattle(c, def, final, gameData)
+    expect(r.report.won).toBe(true)
+    expect(r.campaign.progress).toBe(1)
+    const m = r.campaign.roster.find((x) => x.heroId === 'caocao')!
+    expect(m.level).toBe(2)
+    expect(m.exp).toBe(55)
+    expect(m.base.hp).toBe(caocao.base.hp + 2)
+    expect(r.campaign.inventory).toEqual(expect.arrayContaining(['iron_sword', 'taiping_book']))
+    // 掉落目标未死则不入库
+    const aliveDrop = settleBattle(c, { ...def, drops: [{ unitId: 'e1', itemId: 'jinchuang_yao' }] },
+      { ...final, units: final.units.map((u) => u.id === 'e1' ? { ...u, alive: true } : u) }, gameData)
+    expect(aliveDrop.campaign.inventory).not.toContain('jinchuang_yao')
+  })
+  it('败北：不收割不推进（防刷经验）', () => {
+    const c = newGame()
+    const st = initBattle(battles.yingchuan, 42)
+    const final = { ...st, finished: 'lost' as const, rewards: ['iron_sword'] }
+    const r = settleBattle(c, battles.yingchuan, final, gameData)
+    expect(r.report.won).toBe(false)
+    expect(r.campaign).toEqual(c)
+  })
+  it('战报：经验增量与升级数按 100/级 折算', () => {
+    const c = newGame()
+    const st = initBattle(battles.yingchuan, 42)
+    const units = st.units.map((u) => u.faction === 'enemy' ? { ...u, alive: false } : u)
+    const dun = units.find((u) => u.id === 'xiaohoudun')!
+    const idx = units.indexOf(dun)
+    units[idx] = { ...dun, level: 3, exp: 40 } // 2 级 × 100 + 40
+    const r = settleBattle(c, battles.yingchuan, { ...st, units, finished: 'won' as const, rewards: [] }, gameData)
+    const row = r.report.heroes.find((h) => h.heroId === 'xiaohoudun')!
+    expect(row.expGained).toBe(240)
+    expect(row.levelsGained).toBe(2)
+    expect(row.toLevel).toBe(3)
+    expect(r.report.heroes.every((h) => h.heroId === 'caocao' || c.roster.some((m) => m.heroId === h.heroId))).toBe(true)
+  })
+  it('新武将胜利后自动入册（以战后数值）', () => {
+    const c = { ...newGame(), roster: newGame().roster.filter((m) => m.heroId !== 'xunyu') }
+    const st = initBattle(battles.yingchuan, 42)
+    const units = st.units.map((u) => u.faction === 'enemy' ? { ...u, alive: false } : u)
+    const xy = units.find((u) => u.id === 'xunyu')!
+    const idx = units.indexOf(xy)
+    units[idx] = { ...xy, level: 2, exp: 10 }
+    const r = settleBattle(c, battles.yingchuan, { ...st, units, finished: 'won' as const, rewards: [] }, gameData)
+    expect(r.campaign.roster.find((m) => m.heroId === 'xunyu')!.level).toBe(2)
   })
 })

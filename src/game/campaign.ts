@@ -1,8 +1,9 @@
-import type { BattleDef, ItemSlot, Stats, Unit } from '../engine/types'
+import type { BattleDef, BattleState, ItemSlot, Stats, Unit } from '../engine/types'
 import type { GameData } from '../data'
 import { gameData } from '../data'
 import { battles } from '../data/battles'
 import { effectiveStats } from '../engine/internal'
+import { EXP_PER_LEVEL } from '../engine/growth'
 
 /** 战役时间轴（M3 = 前 3 场）。 */
 export const CAMPAIGN_BATTLES: readonly string[] = ['yingchuan', 'sishui', 'hulao']
@@ -128,4 +129,56 @@ export function deployBattle(def: BattleDef, c: CampaignState, data: GameData = 
     return merged
   })
   return { ...def, units }
+}
+
+export interface SettleReportHero {
+  heroId: string; name: string
+  expGained: number   // 本场折算总经验（跨级按 100/级）
+  levelsGained: number
+  toLevel: number
+}
+export interface SettleReport {
+  won: boolean
+  heroes: SettleReportHero[]       // 仅本场参战武将
+  gained: string[]                 // 入库物品 id（宝物 + 掉落）
+}
+
+/** 战后结算：胜利收割成长与物品并推进进度；败北原样返回（防刷经验）。 */
+export function settleBattle(
+  c: CampaignState, def: BattleDef, final: BattleState, data: GameData = gameData,
+): { campaign: CampaignState; report: SettleReport } {
+  if (final.finished !== 'won') {
+    return { campaign: c, report: { won: false, heroes: [], gained: [] } }
+  }
+  const roster = c.roster.map((m) => ({ ...m, base: { ...m.base }, equipment: { ...m.equipment }, items: [...m.items] }))
+  const heroes: SettleReportHero[] = []
+  for (const u of final.units) {
+    if (u.faction !== 'player' || u.heroId === '') continue
+    const m = roster.find((x) => x.heroId === u.heroId)
+    const from = m ?? { heroId: u.heroId, level: 1, exp: 0, base: { ...u.base }, equipment: { ...u.equipment }, items: [] }
+    heroes.push({
+      heroId: u.heroId, name: data.heroes[u.heroId]?.name ?? u.heroId,
+      expGained: (u.level - from.level) * EXP_PER_LEVEL + (u.exp - from.exp),
+      levelsGained: u.level - from.level, toLevel: u.level,
+    })
+    if (m) {
+      m.level = u.level; m.exp = u.exp; m.base = { ...u.base }; m.items = [...u.items]
+    } else {
+      roster.push({ heroId: u.heroId, level: u.level, exp: u.exp, base: { ...u.base }, equipment: { ...u.equipment }, items: [...u.items] })
+    }
+  }
+  const gained = [...final.rewards]
+  for (const d of def.drops ?? []) {
+    const t = final.units.find((u) => u.id === d.unitId)
+    if (t && !t.alive) gained.push(d.itemId)
+  }
+  return {
+    campaign: {
+      ...c,
+      progress: Math.min(c.progress + 1, CAMPAIGN_BATTLES.length),
+      roster,
+      inventory: [...c.inventory, ...gained],
+    },
+    report: { won: true, heroes, gained },
+  }
 }
