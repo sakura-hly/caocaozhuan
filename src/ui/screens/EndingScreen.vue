@@ -1,15 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { endingKind } from '../../game/campaign'
 
 const props = defineProps<{ morality: number }>()
 defineEmits<{ (e: 'toTitle'): void }>()
 
-/** 分档：≥2 忠臣 / ≤−2 奸雄 / 其余中间（口径与 CampaignState.morality 注释一致）。 */
-const kind = computed<'loyal' | 'tyrant' | 'middle'>(() => {
-  if (props.morality >= 2) return 'loyal'
-  if (props.morality <= -2) return 'tyrant'
-  return 'middle'
-})
+/** 分档逻辑在 campaign 层 endingKind（含边界断言）；组件只消费。 */
+const kind = computed(() => endingKind(props.morality))
 const ENDINGS = {
   loyal: {
     title: '治世之能臣',

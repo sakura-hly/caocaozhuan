@@ -212,3 +212,12 @@ export function applyChoice(c: CampaignState, choiceId: string, optionIndex: num
 export function addMorality(c: CampaignState, delta: number): CampaignState {
   return { ...c, morality: c.morality + delta }
 }
+
+export type EndingKind = 'loyal' | 'tyrant' | 'middle'
+
+/** 结局分档：忠奸 ≥2 忠臣 / ≤−2 奸雄 / 其余居中（M4 核心参数，EndingScreen 消费）。 */
+export function endingKind(morality: number): EndingKind {
+  if (morality >= 2) return 'loyal'
+  if (morality <= -2) return 'tyrant'
+  return 'middle'
+}

@@ -4,7 +4,7 @@ import {
   CAMPAIGN_BATTLES, newGame, currentBattleId,
   equipItem, unequipItem, assignItem, unassignItem,
   deployBattle, settleBattle,
-  applyChoice, addMorality, choiceMade,
+  applyChoice, addMorality, choiceMade, endingKind,
 } from '../../src/game/campaign'
 import { battles } from '../../src/data/battles'
 import { assertBattleValid } from '../../src/game/bootstrap'
@@ -263,5 +263,17 @@ describe('善恶值与抉择记录', () => {
     if (!r.ok) throw new Error(r.error)
     expect(choiceMade(r.campaign, 'wancheng_post')).toBe(0)
     expect(choiceMade(r.campaign, 'xiapi_post')).toBeNull()
+  })
+})
+
+describe('结局分档边界（endingKind）', () => {
+  it('±2 分界两侧逐点锁定——M4 核心参数，改比较符必红', () => {
+    expect(endingKind(-3)).toBe('tyrant')
+    expect(endingKind(-2)).toBe('tyrant') // 分界含端点
+    expect(endingKind(-1)).toBe('middle')
+    expect(endingKind(0)).toBe('middle')
+    expect(endingKind(1)).toBe('middle')
+    expect(endingKind(2)).toBe('loyal') // 分界含端点
+    expect(endingKind(3)).toBe('loyal')
   })
 })
