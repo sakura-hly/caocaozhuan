@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { DialogueLine } from '../../data/battles/shared'
 import type { HeroDef } from '../../engine/types'
 import { gameData } from '../../data'
@@ -55,7 +55,14 @@ function advance(): void {
   else emit('finished')
 }
 
-onBeforeUnmount(() => clearInterval(timer))
+function onKey(e: KeyboardEvent): void {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault()
+    advance()
+  }
+}
+onMounted(() => window.addEventListener('keydown', onKey))
+onBeforeUnmount(() => { clearInterval(timer); window.removeEventListener('keydown', onKey) })
 </script>
 
 <template>
