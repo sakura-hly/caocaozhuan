@@ -73,9 +73,9 @@ export function validateBattleDef(def: BattleDef, data: GameData): ValidationRep
       if (id === undefined) continue
       const it = data.items[id]
       if (!it) { errs.push(`单位 ${u.id} 引用未知装备 ${id}`); continue }
-      if (it.kind !== slot) errs.push(`单位 ${u.id} 装备 ${it.name} 类型不符（${slot} 槽）`)
+      if (it.kind !== slot) errs.push(`单位 ${u.id} 装备 ${it.name} 类型不符（${slot} 槽，实际 ${it.kind}）`)
       if (it.allowedClasses && !it.allowedClasses.includes(u.classId))
-        errs.push(`单位 ${u.id} 装备 ${it.name} 兵种不符（${u.classId}）`)
+        errs.push(`单位 ${u.id} 装备 ${it.name} 兵种不符（${u.classId}，允许 ${it.allowedClasses.join('/')}）`)
     }
     for (const id of u.items) if (!data.items[id]) errs.push(`单位 ${u.id} 携带未知道具 ${id}`)
   }

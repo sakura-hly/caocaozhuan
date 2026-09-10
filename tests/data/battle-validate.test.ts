@@ -44,7 +44,7 @@ describe('validateBattleDef 扩展规则', () => {
     expect(validateBattleDef(ok, gameData).errors).toEqual([])
     const badUnit = { ...baseDef(), drops: [{ unitId: 'nope', itemId: 'iron_armor' }] }
     const badItem = { ...baseDef(), drops: [{ unitId: 'e1', itemId: 'nope' }] }
-    expect(validateBattleDef(badUnit, gameData).errors.length).toBeGreaterThan(0)
-    expect(validateBattleDef(badItem, gameData).errors.length).toBeGreaterThan(0)
+    expect(validateBattleDef(badUnit, gameData).errors.some((e) => e.includes('掉落引用不存在的单位 nope'))).toBe(true)
+    expect(validateBattleDef(badItem, gameData).errors.some((e) => e.includes('掉落引用未知道具 nope'))).toBe(true)
   })
 })
