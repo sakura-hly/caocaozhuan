@@ -1,4 +1,4 @@
-import type { BattleState, Cell, Command, EngineError, Faction, GameEvent } from '../engine/types'
+import type { BattleDef, BattleState, Cell, Command, EngineError, Faction, GameEvent } from '../engine/types'
 import type { GameData } from '../data'
 import { gameData } from '../data'
 import { apply, initBattle } from '../engine'
@@ -35,8 +35,11 @@ export class BattleOrchestrator {
   private ui: UiState = { selectedUnitId: null, canUndo: false, dialogueQueue: [] }
   private preMove: BattleState | null = null
 
-  constructor(battleId: string, seed: number, private cb: OrchestratorCallbacks, private data: GameData = gameData) {
-    const def = battles[battleId]
+  constructor(
+    battleId: string, seed: number, private cb: OrchestratorCallbacks,
+    private data: GameData = gameData, defOverride?: BattleDef,
+  ) {
+    const def = defOverride ?? battles[battleId]
     if (!def) throw new Error(`未知战役: ${battleId}`)
     assertBattleValid(def, battleId, this.data)
     this.st = initBattle(def, seed)

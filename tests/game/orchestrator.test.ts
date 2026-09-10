@@ -1,7 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import type { BattleState, EngineError, GameEvent } from '../../src/engine/types'
-import type { UiState } from '../../src/game/orchestrator'
+import type { OrchestratorCallbacks, UiState } from '../../src/game/orchestrator'
 import { BattleOrchestrator } from '../../src/game/orchestrator'
+import { gameData } from '../../src/data'
+import { battles } from '../../src/data/battles'
+
+const noopCb: OrchestratorCallbacks = { onState: () => {}, onEvents: () => {}, onError: () => {} }
 
 interface Captured {
   states: BattleState[]
@@ -157,6 +161,27 @@ describe('对话队列', () => {
     expect(orch.uiState.dialogueQueue).toHaveLength(1)
     orch.acknowledgeDialogue()
     expect(orch.uiState.dialogueQueue).toHaveLength(0)
+  })
+})
+
+describe('def 注入与 ally 分支', () => {
+  it('构造器接受注入定义（整备后的 deploy 产物直接开局）', () => {
+    const def = { ...battles.yingchuan, name: '颍川(整备)' }
+    const orch = new BattleOrchestrator('yingchuan', 42, noopCb, gameData, def)
+    expect(orch.state.battleId).toBe('yingchuan')
+  })
+  it('endTurn 推进 ally 阵营 AI 行动并轮回 player', () => {
+    const st: string[] = []
+    const errors: EngineError[] = []
+    const cb: OrchestratorCallbacks = {
+      onState: (s) => { st.push(s.factionOrder[s.factionIndex]) },
+      onEvents: () => {}, onError: (e) => { errors.push(e) },
+    }
+    const orch = new BattleOrchestrator('sishui', 42, cb, gameData)
+    orch.dispatch({ type: 'endTurn' })
+    // 一次 endTurn：ally 批 → enemy 批 → 停回 player
+    expect(st[st.length - 1]).toBe('player')
+    expect(errors).toEqual([]) // ally AI 的指令全部被引擎接受
   })
 })
 
