@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { apply, initBattle } from '../../src/engine'
 import { gameData } from '../../src/data'
-import type { BattleDef } from '../../src/engine/types'
+import type { BattleDef, BattleState } from '../../src/engine/types'
 import { heroUnit, mobUnit, parseMap } from '../../src/data/battles/shared'
 
 /** 三阵营最小战役：玩家曹操+夏侯惇、友军刘备军关羽、敌方两杂兵。 */
@@ -21,7 +21,12 @@ function allyDef(): BattleDef {
   }
 }
 
-const endTurn = (s: ReturnType<typeof initBattle>) => apply(s, { type: 'endTurn' }, gameData)
+/** endTurn 并断言成功（判别联合在此收窄，调用处直接拿 BattleState）。 */
+const endTurn = (s: BattleState): BattleState => {
+  const r = apply(s, { type: 'endTurn' }, gameData)
+  if (!r.ok) throw new Error(`endTurn 失败: ${r.error.code}`)
+  return r.state
+}
 
 describe('三阵营（player/ally/enemy）', () => {
   it('含友军时 factionOrder 为三阵营，无友军为两阵营', () => {
@@ -32,23 +37,34 @@ describe('三阵营（player/ally/enemy）', () => {
   it('回合循环：player→ally→enemy→turn+1 回到 player', () => {
     let s = initBattle(allyDef(), 7)
     expect(s.factionOrder[s.factionIndex]).toBe('player')
-    s = endTurn(s).state
+    s = endTurn(s)
     expect(s.factionOrder[s.factionIndex]).toBe('ally')
-    s = endTurn(s).state
+    s = endTurn(s)
     expect(s.factionOrder[s.factionIndex]).toBe('enemy')
-    s = endTurn(s).state
+    s = endTurn(s)
     expect(s.turn).toBe(2)
     expect(s.factionOrder[s.factionIndex]).toBe('player')
   })
   it('友军在场不改变胜负口径：敌全灭=胜；我方全灭=负（友军存活不救）', () => {
     let s = initBattle(allyDef(), 7)
     for (const u of s.units) if (u.faction === 'enemy') u.alive = false // 直接构造终局（不可变约定仅供 apply；测试内改快照构造场景）
-    s = endTurn(s).state
+    s = endTurn(s)
     expect(s.finished).toBe('won')
     let t = initBattle(allyDef(), 7)
     for (const u of t.units) if (u.faction === 'player') u.alive = false
-    t = endTurn(t).state
+    t = endTurn(t)
     expect(t.finished).toBe('lost')
+  })
+  it('友军全灭：回合循环跳过 ally 直达 enemy，且不判负', () => {
+    let s = initBattle(allyDef(), 7)
+    for (const u of s.units) if (u.faction === 'ally') u.alive = false
+    expect(s.finished).toBeNull() // 友军全灭本身不构成胜负（判负只看 player 阵营）
+    s = endTurn(s)
+    expect(s.finished).toBeNull()
+    expect(s.factionOrder[s.factionIndex]).toBe('enemy') // 无存活单位的 ally 阵营被跳过
+    s = endTurn(s)
+    expect(s.turn).toBe(2)
+    expect(s.factionOrder[s.factionIndex]).toBe('player')
   })
   it('玩家不能操控友军单位（NOT_YOUR_TURN）', () => {
     const s = initBattle(allyDef(), 7)
