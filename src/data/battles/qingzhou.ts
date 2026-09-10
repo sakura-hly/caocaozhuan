@@ -53,7 +53,7 @@ export const qingzhou: BattleDef = {
     ] },
   ],
   treasureCells: [
-    { cell: { x: 13, y: 6 }, itemId: 'dilu_horse', found: false }, // 村落马厩
+    { cell: { x: 13, y: 6 }, itemId: 'dilu_horse', found: false }, // 东城马厩
     { cell: { x: 9, y: 8 }, itemId: 'huanshen_dan', found: false },
   ],
   drops: [], // 歼灭战奖励走宝物格
@@ -82,6 +82,6 @@ export const qingzhouDialogues: Record<string, DialogueLine[]> = {
   qz_qushuai_down: [
     { speaker: '黄巾渠帅', text: '苍天已死……苍天已死啊……' },
     { speaker: '于禁', text: '贼首已诛，尔等还不下马受降！' },
-    { speaker: '曹操', text: '传令三军：降者免死，扫清余孽！' },
+    { speaker: '曹操', text: '传令三军：穷追余寇，毋使漏网！' },
   ],
 }
