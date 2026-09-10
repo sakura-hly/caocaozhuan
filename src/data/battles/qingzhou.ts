@@ -68,7 +68,6 @@ export const qingzhou: BattleDef = {
   maxTurns: 20,
 }
 
-export type { DialogueLine }
 
 export const qingzhouDialogues: Record<string, DialogueLine[]> = {
   qz_start: [

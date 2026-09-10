@@ -58,7 +58,6 @@ export const xuzhou: BattleDef = {
   maxTurns: 16,
 }
 
-export type { DialogueLine }
 
 export const xuzhouDialogues: Record<string, DialogueLine[]> = {
   xz_start: [

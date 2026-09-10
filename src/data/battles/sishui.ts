@@ -70,7 +70,6 @@ export const sishui: BattleDef = {
   maxTurns: 20,
 }
 
-export type { DialogueLine }
 
 export const sishuiDialogues: Record<string, DialogueLine[]> = {
   ss_start: [
