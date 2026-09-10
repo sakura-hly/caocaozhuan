@@ -27,6 +27,16 @@ const defs: HeroDef[] = [
     base: { hp: 38, mp: 22, atk: 4, def: 5, spirit: 16, agi: 8 } },
   { id: 'guojia', name: '郭嘉', title: '字奉孝', classId: 'taoist', portraitHue: 160,
     base: { hp: 36, mp: 18, atk: 4, def: 4, spirit: 14, agi: 9 } },
+  { id: 'liubei', name: '刘备', title: '字玄德', classId: 'lord', portraitHue: 65,
+    base: { hp: 50, mp: 10, atk: 11, def: 9, spirit: 9, agi: 9 } },
+  { id: 'guanyu', name: '关羽', title: '字云长', classId: 'cavalry', portraitHue: 175,
+    base: { hp: 52, mp: 0, atk: 15, def: 9, spirit: 6, agi: 10 } },
+  { id: 'zhangfei', name: '张飞', title: '字翼德', classId: 'cavalry', portraitHue: 320,
+    base: { hp: 56, mp: 0, atk: 14, def: 8, spirit: 3, agi: 9 } },
+  { id: 'huaxiong', name: '华雄', title: '董卓都督', classId: 'cavalry', portraitHue: 340,
+    base: { hp: 52, mp: 0, atk: 13, def: 9, spirit: 4, agi: 9 } },
+  { id: 'lvbu', name: '吕布', title: '字奉先', classId: 'cavalry', portraitHue: 300,
+    base: { hp: 60, mp: 0, atk: 17, def: 11, spirit: 5, agi: 12 } },
 ]
 
 export const heroes: Record<string, HeroDef> = Object.fromEntries(defs.map((d) => [d.id, d]))

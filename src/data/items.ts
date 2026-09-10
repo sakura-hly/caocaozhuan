@@ -8,6 +8,7 @@ const defs: ItemDef[] = [
   { id: 'shuangtie_ji', name: '双铁戟', kind: 'weapon', bonuses: { atk: 9 }, allowedClasses: ['infantry'], desc: '宝物：典韦的成名兵器' },
   { id: 'iron_bow', name: '铁弓', kind: 'weapon', bonuses: { atk: 4 }, allowedClasses: ['archer'], desc: '制式铁弓' },
   { id: 'tiegu_fan', name: '铁骨扇', kind: 'weapon', bonuses: { atk: 3, spirit: 2 }, allowedClasses: ['strategist', 'taoist'], desc: '军师道士所用' },
+  { id: 'fangtian_ji', name: '方天画戟', kind: 'weapon', bonuses: { atk: 11 }, allowedClasses: ['cavalry', 'lord'], desc: '宝物：吕布的画戟' },
   // 防具
   { id: 'cloth_armor', name: '布衣', kind: 'armor', bonuses: { def: 2 }, desc: '粗布护衣' },
   { id: 'iron_armor', name: '铁甲', kind: 'armor', bonuses: { def: 6 }, desc: '制式铁甲' },
