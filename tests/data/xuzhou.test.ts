@@ -18,6 +18,7 @@ describe('徐州复仇战定义', () => {
     expect(xuzhou.map.every((r) => r.length === 18)).toBe(true)
     // 内容抽查：日后改地图（填河/拆桥/铲城）时这三处先红，不让逐字符核对沦为一次性
     expect(xuzhou.map[4]![10]).toBe('bridge') // 北护城河桥（西进第一通道）
+    expect(xuzhou.map[7]![10]).toBe('bridge') // 南护城河桥——设计标识是「两桥」，只锁北桥改回水格仍会绿
     expect(xuzhou.map[5]![15]).toBe('city') // 陶谦城（敌主将落点格）
     expect(xuzhou.map[0]![11]).toBe('water') // 北段护城河
   })
@@ -25,8 +26,10 @@ describe('徐州复仇战定义', () => {
     expect(xuzhou.units.find((u) => u.heroId === 'xuchu')?.faction).toBe('player')
     expect(xuzhou.win).toEqual({ kind: 'killCommander', unitId: 'taoqian' })
     expect(xuzhou.units.find((u) => u.heroId === 'taoqian')?.faction).toBe('enemy')
-    // 敌军师在编：strategist 持 zhiyu（治疗保主将）由 AI 按兵种注册表放行，数据侧只锁兵种与阵营
-    expect(xuzhou.units.some((u) => u.classId === 'strategist' && u.faction === 'enemy')).toBe(true)
+    // 敌军师在编：strategist 持 zhiyu（治疗保主将）由 AI 按兵种注册表放行，数据侧锁兵种+阵营+mp 门槛
+    const m0 = xuzhou.units.find((u) => u.classId === 'strategist' && u.faction === 'enemy')
+    expect(m0).toBeDefined()
+    expect(m0!.base.mp).toBeGreaterThanOrEqual(gameData.strategies.zhiyu.mpCost) // mp 不够则「保主将」静默失效
     // 陶谦闭城固守：无增援；宝物走战后抉择 xuzhou_post（安民得明光铠），无宝物格无掉落
     expect(xuzhou.reinforcements).toEqual([])
     expect(xuzhou.treasureCells).toEqual([])
