@@ -69,8 +69,8 @@ function onImportFile(e: Event): void {
     <main>
       <section class="timeline">
         <div v-if="!current" class="allclear">
-          <h2>第三章完 · 三战皆捷</h2>
-          <p>孟德之名，自此威震诸侯。（后续章节开发中）</p>
+          <h2>八章全通 · 乱世已成</h2>
+          <p>结局已按君之忠奸呈现。可自档位读取，重走乱世另择仁暴。</p>
         </div>
         <ul>
           <li v-for="r in rows" :key="r.id" :class="r.state">

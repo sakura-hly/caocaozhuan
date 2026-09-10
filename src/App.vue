@@ -11,8 +11,9 @@ import BattleScreen from './ui/screens/BattleScreen.vue'
 import ProgressScreen from './ui/screens/ProgressScreen.vue'
 import PrepScreen from './ui/screens/PrepScreen.vue'
 import SettleScreen from './ui/screens/SettleScreen.vue'
+import EndingScreen from './ui/screens/EndingScreen.vue'
 
-type Screen = 'title' | 'progress' | 'prep' | 'battle' | 'settle'
+type Screen = 'title' | 'progress' | 'prep' | 'battle' | 'settle' | 'ending'
 
 const screen = ref<Screen>('title')
 const campaign = ref<CampaignState | null>(null)
@@ -77,6 +78,10 @@ function onChoicePicked(optionIndex: number): void {
   saveSlot(localStorageAdapter, 'auto', c) // 抉择影响即落盘
   pendingChoice.value = null
 }
+/** 结算屏「继续」：全章通关 → 结局屏；否则回进度屏。 */
+function onSettleContinue(): void {
+  screen.value = campaign.value && currentBattleId(campaign.value) === null ? 'ending' : 'progress'
+}
 </script>
 
 <template>
@@ -111,8 +116,13 @@ function onChoicePicked(optionIndex: number): void {
     v-else-if="screen === 'settle' && settleReport"
     :report="settleReport"
     :choice="pendingChoice"
-    @continue="screen = 'progress'"
+    @continue="onSettleContinue"
     @choice-picked="onChoicePicked"
+  />
+  <EndingScreen
+    v-else-if="screen === 'ending' && campaign"
+    :morality="campaign.morality"
+    @to-title="screen = 'title'"
   />
 </template>
 
