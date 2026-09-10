@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import type { BattleState, Cell, EngineError, Faction, GameEvent } from '../../engine/types'
+import type { BattleDef, BattleState, Cell, EngineError, Faction, GameEvent } from '../../engine/types'
 import { gameData } from '../../data'
 import { BattleOrchestrator, type Intent, type UiState } from '../../game/orchestrator'
 import { dialogueLines } from '../../game/bootstrap'
@@ -21,8 +21,8 @@ import ResultBanner from '../components/ResultBanner.vue'
 
 type MenuMode = 'none' | 'action' | 'attackPick' | 'spellPick' | 'spell' | 'item'
 
-const props = defineProps<{ battleId: string }>()
-defineEmits<{ (e: 'exit'): void }>()
+const props = defineProps<{ battleId: string; def?: BattleDef }>()
+const emit = defineEmits<{ (e: 'exit'): void; (e: 'finished', finalState: BattleState): void }>()
 
 // ---------- 响应式状态 ----------
 const canvasEl = ref<HTMLCanvasElement | null>(null)
@@ -389,7 +389,13 @@ function setupOrchestrator(): void {
     onState: onOrchState,
     onEvents: onOrchEvents,
     onError: onOrchError,
-  })
+  }, gameData, props.def)
+}
+
+/** 结算横幅主按钮：胜=上报终局（App 结算）；败=原地重开。 */
+function onBannerConfirm(): void {
+  if (result.value?.won && state.value) emit('finished', state.value)
+  else restart()
 }
 
 function restart(): void {
@@ -474,7 +480,8 @@ onBeforeUnmount(() => {
       <ResultBanner
         v-if="result"
         :won="result.won" :turn="result.turn" :rewards="[]"
-        @restart="restart" @exit="$emit('exit')"
+        :confirm-label="result.won ? '查看战果' : '重新挑战'" exit-label="返回进度"
+        @restart="onBannerConfirm" @exit="$emit('exit')"
       />
       <DialogueBox v-if="dialogueText.length && !result" :key="dialogueId!" :lines="dialogueText" @finished="onDialogueFinished" />
     </div>

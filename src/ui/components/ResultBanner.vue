@@ -1,6 +1,6 @@
 <script setup lang="ts">
-interface Props { won: boolean; turn: number; rewards?: string[] }
-withDefaults(defineProps<Props>(), { rewards: () => [] })
+interface Props { won: boolean; turn: number; rewards?: string[]; confirmLabel?: string; exitLabel?: string }
+withDefaults(defineProps<Props>(), { rewards: () => [], confirmLabel: '重新开始', exitLabel: '返回标题' })
 defineEmits<{ (e: 'restart'): void; (e: 'exit'): void }>()
 </script>
 
@@ -12,8 +12,8 @@ defineEmits<{ (e: 'restart'): void; (e: 'exit'): void }>()
       <li v-for="(r, i) in rewards" :key="`${i}-${r}`">获得 {{ r }}</li>
     </ul>
     <div class="btns">
-      <button @click="$emit('restart')">重新开始</button>
-      <button @click="$emit('exit')">返回标题</button>
+      <button @click="$emit('restart')">{{ confirmLabel }}</button>
+      <button @click="$emit('exit')">{{ exitLabel }}</button>
     </div>
   </div>
 </template>
