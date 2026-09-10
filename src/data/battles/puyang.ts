@@ -35,8 +35,9 @@ export const puyang: BattleDef = {
     heroUnit('xunyu', 'player', { x: 1, y: 6 }),
     heroUnit('guojia', 'player', { x: 3, y: 6 }), // 本关新参战——我方首个 debuff 施法者（taoist 才持 pojia/xuanyun/yaowu）
     // 敌方（濮阳城内，竖城墙 x=13 三缺口 y2/y6/y9 为三门）
-    // 吕布复战：战场内 base 覆写（虎牢为 hp66/atk21/def13）——濮阳 hp 更高 atk 更低，围城消耗战口径，非 bug
-    heroUnit('lvbu', 'enemy', { x: 16, y: 2 }, { level: 7, base: { hp: 72, mp: 0, atk: 19, def: 12, spirit: 5, agi: 13 } }), // 城心
+    // 吕布复战：战场内 base 覆写（虎牢为 hp66/atk21/def13）——濮阳 hp 更高 atk 更低，围城消耗战口径，非 bug；
+    // 标级 8 对齐虎牢：level 纯面板数字，同一敌将后一关不应肉眼倒退
+    heroUnit('lvbu', 'enemy', { x: 16, y: 2 }, { level: 8, base: { hp: 72, mp: 0, atk: 19, def: 12, spirit: 5, agi: 13 } }), // 城心
     heroUnit('chengong', 'enemy', { x: 17, y: 1 }, { level: 6 }), // 城内后排，不覆写 base
     // 敌方 debuff 施法者必须是 taoist 兵种：AI 的 debuff 分支按兵种放行（strategist 只治疗/攻击施法），
     // 陈宫是 strategist 不会施 debuff——引擎口径而非疏漏，故另设吕布军妖道承担 debuff
@@ -68,11 +69,11 @@ export const puyangDialogues: Record<string, DialogueLine[]> = {
   py_start: [
     { speaker: '曹操', text: '吕布袭我兖州，幸得荀彧、程昱死守三城，基业未失。今回军濮阳，誓擒吕奉先！' },
     { speaker: '陈宫', text: '曹操远来兵疲，濮阳城坚，可凭深沟高垒，待其粮尽自退。' },
-    { speaker: '吕布', text: '吾有画戟赤兔，何惧曹贼！彼若来攻，吾自出城破之！' },
+    { speaker: '吕布', text: '并州铁骑在此，何惧曹贼！彼若来攻，吾自出城破之！' },
   ],
   py_chengong: [
-    { speaker: '陈宫', text: '曹军势大，将军不可力敌。画戟赤兔，暂避锋芒——先挫其锐，再图后计。' },
-    { speaker: '吕布军妖道', text: '谨遵军师之命。咒甲之术已成，教曹军刀枪不入者，寸步难行！' },
+    { speaker: '陈宫', text: '曹军势大，将军不可力敌。且凭城坚壕深，避其锐气——待彼师老，再图后计。' },
+    { speaker: '吕布军妖道', text: '谨遵军师之命。咒甲一成，教曹军坚甲尽成朽木！' },
   ],
   py_lvbu_down: [
     { speaker: '吕布', text: '大丈夫岂能久居人下……濮阳已不可守，且走定陶，再整兵马！' },
