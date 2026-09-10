@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type { BattleState, EngineError, GameEvent } from '../../src/engine/types'
+import type { BattleState, EngineError, Faction, GameEvent } from '../../src/engine/types'
 import type { OrchestratorCallbacks, UiState } from '../../src/game/orchestrator'
 import { BattleOrchestrator } from '../../src/game/orchestrator'
 import { gameData } from '../../src/data'
@@ -166,21 +166,31 @@ describe('对话队列', () => {
 
 describe('def 注入与 ally 分支', () => {
   it('构造器接受注入定义（整备后的 deploy 产物直接开局）', () => {
-    const def = { ...battles.yingchuan, name: '颍川(整备)' }
+    const def = {
+      ...battles.yingchuan,
+      units: battles.yingchuan.units.map((u) => (u.id === 'caocao' ? { ...u, level: 5 } : u)),
+    }
     const orch = new BattleOrchestrator('yingchuan', 42, noopCb, gameData, def)
     expect(orch.state.battleId).toBe('yingchuan')
+    expect(orch.state.units.find((u) => u.id === 'caocao')!.level).toBe(5) // 注入生效（模板 Lv1）
+  })
+  it('注入定义 id 与 battleId 不符即抛错（防开场白/对话静默错位）', () => {
+    expect(() => new BattleOrchestrator('hulao', 42, noopCb, gameData, battles.yingchuan)).toThrow()
   })
   it('endTurn 推进 ally 阵营 AI 行动并轮回 player', () => {
-    const st: string[] = []
+    const factions: Faction[] = []
     const errors: EngineError[] = []
     const cb: OrchestratorCallbacks = {
-      onState: (s) => { st.push(s.factionOrder[s.factionIndex]) },
-      onEvents: () => {}, onError: (e) => { errors.push(e) },
+      onState: () => {},
+      onEvents: (es) => { for (const e of es) if (e.type === 'turnStarted') factions.push(e.faction) },
+      onError: (e) => { errors.push(e) },
     }
     const orch = new BattleOrchestrator('sishui', 42, cb, gameData)
     orch.dispatch({ type: 'endTurn' })
-    // 一次 endTurn：ally 批 → enemy 批 → 停回 player
-    expect(st[st.length - 1]).toBe('player')
+    // 一次 endTurn 的阵营序：ally 批 → enemy 批 → 回合 2 停回 player
+    expect(factions).toEqual(['ally', 'enemy', 'player'])
+    expect(orch.state.turn).toBe(2)
+    expect(orch.state.factionOrder).toEqual(['player', 'ally', 'enemy'])
     expect(errors).toEqual([]) // ally AI 的指令全部被引擎接受
   })
 })

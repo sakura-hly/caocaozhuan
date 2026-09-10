@@ -41,6 +41,8 @@ export class BattleOrchestrator {
   ) {
     const def = defOverride ?? battles[battleId]
     if (!def) throw new Error(`未知战役: ${battleId}`)
+    // id 不符会让开场白/对话按 battleId 查静态表而全部落空——误用须当场暴露，不许静默开局
+    if (defOverride && def.id !== battleId) throw new Error(`注入定义 id 不符: def.id=${def.id}, battleId=${battleId}`)
     assertBattleValid(def, battleId, this.data)
     this.st = initBattle(def, seed)
     const opener = battleOpeners[battleId]
