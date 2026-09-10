@@ -132,13 +132,20 @@ describe('AI debuff 施法（M4 清偿 M2 登记项）', () => {
     expect(cast && cast.type === 'cast' && cast.target).toEqual({ x: 5, y: 2 })
   })
 
-  it('目标已带任意状态时跳过（防无限叠 debuff）', () => {
+  it('目标已带同 kind 状态不重施，转施异 kind debuff（对齐引擎按 kind 去重）', () => {
     const s = mkState({
       units: [eTao(), mkUnit({ ...dianwei(), statuses: [{ kind: 'defdown', turns: 2 }] })],
     })
     const cmds = decideUnitAction(s, 'e_tao', gameData)
-    const debuffs = new Set(['pojia', 'xuanyun', 'yaowu'])
-    expect(cmds.some((c) => c.type === 'cast' && debuffs.has(c.strategyId))).toBe(false)
+    expect(cmds.some((c) => c.type === 'cast' && c.strategyId === 'pojia')).toBe(false) // 破甲已在身，不重施
+    expect(cmds.some((c) => c.type === 'cast' && c.strategyId === 'xuanyun')).toBe(true) // 眩晕 kind 不同，可施
+  })
+
+  it('多目标择最高威胁：atk 30 与 atk 10 同在射程，指向高威胁者', () => {
+    const low = mkUnit({ id: 'low', pos: { x: 4, y: 1 }, base: { hp: 40, mp: 0, atk: 10, def: 8, spirit: 3, agi: 6 } })
+    const s = mkState({ units: [eTao(), dianwei(), low] })
+    const cast = decideUnitAction(s, 'e_tao', gameData).find((c) => c.type === 'cast')
+    expect(cast && cast.type === 'cast' && cast.target).toEqual({ x: 5, y: 2 })
   })
 
   it('mp 不足不施', () => {

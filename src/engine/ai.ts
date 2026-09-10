@@ -62,10 +62,11 @@ export function decideUnitAction(state: BattleState, unitId: string, data: GameD
           if (score > best.score) best = { score, cmds: [...moveCmd, { type: 'cast', unitId, strategyId: s.id, target: { x: t.pos.x, y: t.pos.y } }] }
         }
       } else if (s.kind === 'debuff') {
-        // M4（M2 登记项清偿）：军师优先削弱最高威胁目标；已带状态不叠（防无限施法——原版敌军师作风）
+        // M4（M2 登记项清偿）：持法道士优先削弱最高威胁目标。同 kind 已带不重施（对齐 magic 按 kind 去重，
+        // 亦免我方增益挡住敌方 debuff）；评分 14+atk×1.2 稳压普攻、低于濒死治疗紧急度——取舍有意。
         for (const t of foes) {
           if (manhattan(cell, t.pos) > s.range) continue
-          if (t.statuses.length > 0) continue
+          if (t.statuses.some((st) => st.kind === s.effect)) continue
           const score = 14 + effectiveStats(t, data).atk * 1.2 // 威胁越高越值得削弱
           if (score > best.score) {
             best = { score, cmds: [...moveCmd, { type: 'cast', unitId, strategyId: s.id, target: { x: t.pos.x, y: t.pos.y } }] }
