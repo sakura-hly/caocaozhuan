@@ -19,7 +19,10 @@ const battleDef = ref<BattleDef | null>(null)
 const settleReport = ref<SettleReport | null>(null)
 const attempt = ref(0) // 重开计数：BattleScreen 的 key，强制重建
 
-const hasAutoSave = computed(() => slotInfo(localStorageAdapter, 'auto', gameData).status === 'ok')
+/** localStorage 读取无响应性：computed 零依赖会永不过期，改为普通函数让每次渲染重求值。 */
+function hasAutoSave(): boolean {
+  return slotInfo(localStorageAdapter, 'auto', gameData).status === 'ok'
+}
 const currentBattle = computed(() => (campaign.value ? currentBattleId(campaign.value) : null))
 
 function startNew(): void {
@@ -58,7 +61,7 @@ function onBattleFinished(finalState: BattleState): void {
     <p class="sub">Web 复刻 · 核心可玩版</p>
     <div class="btns">
       <button class="start" @click="startNew">新的征程</button>
-      <button class="start" :disabled="!hasAutoSave" @click="continueCampaign">继续征程</button>
+      <button class="start" :disabled="!hasAutoSave()" @click="continueCampaign">继续征程</button>
     </div>
   </div>
   <ProgressScreen
