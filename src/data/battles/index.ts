@@ -15,3 +15,5 @@ export const battleDialogues: Record<string, Record<string, DialogueLine[]>> = {
   sishui: sishuiDialogues,
   hulao: hulaoDialogues,
 }
+
+export { battleChoices, type ChoiceDef, type ChoiceOption } from './choices'
