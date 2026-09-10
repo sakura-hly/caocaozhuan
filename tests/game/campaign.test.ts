@@ -210,4 +210,23 @@ describe('settleBattle', () => {
     const r = settleBattle(c, battles.yingchuan, { ...st, units, finished: 'won' as const, rewards: [] }, gameData)
     expect(r.campaign.roster.find((m) => m.heroId === 'xunyu')!.level).toBe(2)
   })
+  it('名册外武将 Lv>1 模板登场：战报基线取模板值不虚报', () => {
+    const c = { ...newGame(), roster: newGame().roster.filter((m) => m.heroId !== 'xunyu') }
+    // 构造模板 Lv3/exp20 的荀彧参战，战后数值不变
+    const def = { ...battles.yingchuan, units: battles.yingchuan.units.map((u) => (u.id === 'xunyu' ? { ...u, level: 3, exp: 20 } : u)) }
+    const st = initBattle(def, 42)
+    const units = st.units.map((u) => (u.faction === 'enemy' ? { ...u, alive: false } : u))
+    const r = settleBattle(c, def, { ...st, units, finished: 'won' as const, rewards: [] }, gameData)
+    const row = r.report.heroes.find((h) => h.heroId === 'xunyu')!
+    expect(row.levelsGained).toBe(0)
+    expect(row.expGained).toBe(0)
+    expect(r.campaign.roster.find((m) => m.heroId === 'xunyu')!.level).toBe(3)
+  })
+  it('progress 封顶：通关进度再结算不越界', () => {
+    const c = { ...newGame(), progress: 3 }
+    const st = initBattle(battles.yingchuan, 42)
+    const final = { ...st, units: st.units.map((u) => (u.faction === 'enemy' ? { ...u, alive: false } : u)), finished: 'won' as const, rewards: [] }
+    const r = settleBattle(c, battles.yingchuan, final, gameData)
+    expect(r.campaign.progress).toBe(3)
+  })
 })

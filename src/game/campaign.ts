@@ -155,7 +155,9 @@ export function settleBattle(
   for (const u of final.units) {
     if (u.faction !== 'player' || u.heroId === '') continue
     const m = roster.find((x) => x.heroId === u.heroId)
-    const from = m ?? { heroId: u.heroId, level: 1, exp: 0, base: { ...u.base }, equipment: { ...u.equipment }, items: [] }
+    // 名册外武将的战报基线取战役定义模板值（Lv>1 登场不虚报经验）
+    const tpl = def.units.find((d) => d.heroId === u.heroId)
+    const from = m ?? { heroId: u.heroId, level: tpl?.level ?? 1, exp: tpl?.exp ?? 0, base: { ...u.base }, equipment: { ...u.equipment }, items: [] }
     heroes.push({
       heroId: u.heroId, name: data.heroes[u.heroId]?.name ?? u.heroId,
       expGained: (u.level - from.level) * EXP_PER_LEVEL + (u.exp - from.exp),
