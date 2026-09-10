@@ -39,7 +39,12 @@ describe('宛城之战定义', () => {
         expect(e.unit.classId).toBe('infantry')
       })
     })
-    expect(wancheng.treasureCells).toHaveLength(2)
+    // 宝物格全锁（挪格/换物即红，勿只锁数量）
+    expect(wancheng.treasureCells.map((t) => [t.cell.x, t.cell.y, t.itemId])).toEqual([
+      [7, 8, 'jinchuang_yao'],
+      [12, 10, 'huanshen_dan'],
+    ])
     expect(wancheng.drops).toEqual([]) // 撤退战无暇缴获
+    expect(wancheng.maxTurns).toBe(14) // reach 关压力核心参数
   })
 })

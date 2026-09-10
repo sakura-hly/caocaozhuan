@@ -57,7 +57,7 @@ export const wancheng: BattleDef = {
   ],
   treasureCells: [
     { cell: { x: 7, y: 8 }, itemId: 'jinchuang_yao', found: false }, // 突围路上
-    { cell: { x: 12, y: 10 }, itemId: 'huanshen_dan', found: false },
+    { cell: { x: 12, y: 10 }, itemId: 'huanshen_dan', found: false }, // 东南角顺路（+2 cost）
   ],
   drops: [], // 撤退战无暇缴获
   dialogues: [
