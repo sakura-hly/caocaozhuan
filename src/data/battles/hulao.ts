@@ -73,7 +73,6 @@ export const hulao: BattleDef = {
   maxTurns: 20,
 }
 
-export type { DialogueLine }
 
 export const hulaoDialogues: Record<string, DialogueLine[]> = {
   hl_start: [

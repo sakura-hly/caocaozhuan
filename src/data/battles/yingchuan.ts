@@ -62,7 +62,6 @@ export const yingchuan: BattleDef = {
   maxTurns: 20,
 }
 
-export type { DialogueLine }
 
 export const yingchuanDialogues: Record<string, DialogueLine[]> = {
   yc_start: [
