@@ -2,9 +2,10 @@
 import { computed, ref } from 'vue'
 import type { BattleDef, BattleState } from './engine/types'
 import { gameData } from './data'
-import { battles } from './data/battles'
+import { battles, battleChoices } from './data/battles'
+import type { ChoiceDef } from './data/battles'
 import type { CampaignState, SettleReport } from './game/campaign'
-import { newGame, currentBattleId, deployBattle, settleBattle } from './game/campaign'
+import { newGame, currentBattleId, deployBattle, settleBattle, applyChoice, addMorality } from './game/campaign'
 import { saveSlot, loadSlot, slotInfo, localStorageAdapter } from './game/saves'
 import BattleScreen from './ui/screens/BattleScreen.vue'
 import ProgressScreen from './ui/screens/ProgressScreen.vue'
@@ -17,6 +18,7 @@ const screen = ref<Screen>('title')
 const campaign = ref<CampaignState | null>(null)
 const battleDef = ref<BattleDef | null>(null)
 const settleReport = ref<SettleReport | null>(null)
+const pendingChoice = ref<ChoiceDef | null>(null)
 const attempt = ref(0) // 重开计数：BattleScreen 的 key，强制重建
 
 /** localStorage 读取无响应性：computed 零依赖会永不过期，改为普通函数让每次渲染重求值。 */
@@ -51,7 +53,25 @@ function onBattleFinished(finalState: BattleState): void {
   campaign.value = r.campaign
   settleReport.value = r.report
   saveSlot(localStorageAdapter, 'auto', r.campaign)
+  const pending = Object.values(battleChoices).find(
+    (ch) => ch.battleId === battleDef.value!.id && !Object.hasOwn(r.campaign.choicesMade, ch.id),
+  ) ?? null
+  pendingChoice.value = r.report.won ? pending : null // 败北不带抉择
   screen.value = 'settle'
+}
+/** 抉择作答：落账 choicesMade/morality/物品奖励，随后清空让结算屏放行。 */
+function onChoicePicked(optionIndex: number): void {
+  const ch = pendingChoice.value
+  if (!ch || !campaign.value) return
+  const opt = ch.options[optionIndex]
+  if (!opt) return
+  const answered = applyChoice(campaign.value, ch.id, optionIndex)
+  if (!answered.ok) { pendingChoice.value = null; return }
+  let c = addMorality(answered.campaign, opt.morality)
+  if (opt.itemRewards?.length) c = { ...c, inventory: [...c.inventory, ...opt.itemRewards] }
+  campaign.value = c
+  saveSlot(localStorageAdapter, 'auto', c) // 抉择影响即落盘
+  pendingChoice.value = null
 }
 </script>
 
@@ -86,7 +106,9 @@ function onBattleFinished(finalState: BattleState): void {
   <SettleScreen
     v-else-if="screen === 'settle' && settleReport"
     :report="settleReport"
+    :choice="pendingChoice"
     @continue="screen = 'progress'"
+    @choice-picked="onChoicePicked"
   />
 </template>
 

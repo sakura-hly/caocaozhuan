@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { DialogueLine } from '../../data/battles/shared'
-import type { HeroDef } from '../../engine/types'
-import { gameData } from '../../data'
 import { drawPortrait } from '../../render/sprites'
+import { heroOf } from './portraitLookup'
 
 interface Props { lines: DialogueLine[] }
 const props = defineProps<Props>()
@@ -16,13 +15,6 @@ let timer = 0
 
 const line = computed<DialogueLine | null>(() => props.lines[idx.value] ?? null)
 const fullText = computed<string>(() => line.value?.text ?? '')
-
-/** 说话人 → 武将定义（查不到给通用兜底：同色相、默认兵种）。 */
-function heroOf(speaker: string): HeroDef {
-  const found = Object.values(gameData.heroes).find((h) => h.name === speaker)
-  if (found) return found
-  return { id: `npc:${speaker}`, name: speaker, classId: 'infantry', portraitHue: 210 } as unknown as HeroDef
-}
 
 function paintPortrait(): void {
   const cv = canvasEl.value

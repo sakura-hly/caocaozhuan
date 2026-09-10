@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import type { SettleReport } from '../../game/campaign'
+import type { ChoiceDef } from '../../data/battles/choices'
 import { gameData } from '../../data'
+import ChoiceBox from '../components/ChoiceBox.vue'
 
-defineProps<{ report: SettleReport }>()
-defineEmits<{ (e: 'continue'): void }>()
+defineProps<{ report: SettleReport; choice?: ChoiceDef | null }>()
+defineEmits<{
+  (e: 'continue'): void
+  (e: 'choicePicked', optionIndex: number): void
+}>()
 
 const itemName = (id: string) => gameData.items[id]?.name ?? id
 </script>
@@ -31,7 +36,8 @@ const itemName = (id: string) => gameData.items[id]?.name ?? id
           <li v-for="(id, i) in report.gained" :key="`${i}-${id}`">{{ itemName(id) }}<small> 入库</small></li>
         </ul>
       </div>
-      <button class="primary" @click="$emit('continue')">返回进度</button>
+      <ChoiceBox v-if="choice" :choice="choice" @picked="(i: number) => $emit('choicePicked', i)" />
+      <button class="primary" :disabled="!!choice" @click="$emit('continue')">返回进度</button>
     </div>
   </div>
 </template>
@@ -51,4 +57,5 @@ td { padding: 7px 8px; border-bottom: 1px dashed #3a3226; }
 .gained li { padding: 4px 0; }
 .gained small { color: #9a8f7a; }
 .primary { align-self: center; padding: 9px 34px; background: #d8b86a; color: #141210; border: none; border-radius: 3px; font-weight: bold; cursor: pointer; letter-spacing: 4px; }
+.primary:disabled { opacity: 0.4; cursor: default; }
 </style>
