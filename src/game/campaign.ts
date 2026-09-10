@@ -20,6 +20,10 @@ export interface CampaignState {
   progress: number
   roster: RosterMember[]
   inventory: string[]
+  /** 忠奸值：仁 +1 / 暴 −1，0 起。结局分档 ≥2 忠臣 / ≤−2 奸雄 / 其余中间。 */
+  morality: number
+  /** 已答抉择：choiceId → 选项下标（防重复作答，存档持久）。 */
+  choicesMade: Record<string, number>
 }
 
 export type OpResult = { ok: true; campaign: CampaignState } | { ok: false; error: string }
@@ -33,7 +37,11 @@ export function newGame(data: GameData = gameData): CampaignState {
       heroId: u.heroId, level: u.level, exp: u.exp, base: { ...u.base },
       equipment: { ...u.equipment }, items: [...u.items],
     }))
-  return { version: 1, progress: 0, roster, inventory: ['jinchuang_yao', 'jinchuang_yao', 'huanshen_dan'] }
+  return {
+    version: 1, progress: 0, roster,
+    inventory: ['jinchuang_yao', 'jinchuang_yao', 'huanshen_dan'],
+    morality: 0, choicesMade: {},
+  }
 }
 
 /** 当前应战战役 id；null = 全部通关。 */
@@ -183,4 +191,24 @@ export function settleBattle(
     },
     report: { won: true, heroes, gained },
   }
+}
+
+/** 查询抉择已选下标；未答返回 null。 */
+export function choiceMade(c: CampaignState, choiceId: string): number | null {
+  const v = c.choicesMade[choiceId]
+  return typeof v === 'number' ? v : null
+}
+
+/** 作答战后抉择：只落 choicesMade（善恶增量的应用走 addMorality，由 UI 组合调用）。 */
+export function applyChoice(c: CampaignState, choiceId: string, optionIndex: number): OpResult {
+  if (Object.hasOwn(c.choicesMade, choiceId)) return { ok: false, error: `抉择已作答: ${choiceId}` }
+  if (!Number.isInteger(optionIndex) || optionIndex < 0 || optionIndex > 9) {
+    return { ok: false, error: `非法选项下标: ${optionIndex}` }
+  }
+  return { ok: true, campaign: { ...c, choicesMade: { ...c.choicesMade, [choiceId]: optionIndex } } }
+}
+
+/** 善恶值变更（UI 从抉择数据读 delta 后调用）。 */
+export function addMorality(c: CampaignState, delta: number): CampaignState {
+  return { ...c, morality: c.morality + delta }
 }

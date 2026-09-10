@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { gameData } from '../../src/data'
-import { newGame, deployBattle, settleBattle } from '../../src/game/campaign'
+import { newGame, deployBattle, settleBattle, applyChoice, addMorality } from '../../src/game/campaign'
 import { battles } from '../../src/data/battles'
 import { initBattle } from '../../src/engine'
 import {
@@ -84,5 +84,33 @@ describe('槽位读写', () => {
   })
   it('浏览器无 localStorage 时适配器不抛异常', () => {
     expect(() => localStorageAdapter.getItem('x')).not.toThrow()
+  })
+})
+
+describe('M4 存档字段兼容', () => {
+  it('M3 旧档缺 morality/choicesMade：读入补默认 0/{}', () => {
+    const legacy = { ...newGame() } as Record<string, unknown>
+    delete legacy.morality
+    delete legacy.choicesMade
+    const c = deserialize(JSON.stringify({ v: 1, savedAt: Date.now(), campaign: legacy }), gameData)
+    expect(c).not.toBeNull()
+    expect(c!.morality).toBe(0)
+    expect(c!.choicesMade).toEqual({})
+  })
+  it('morality 非整数 / choicesMade 非法 → 判损坏返回 null', () => {
+    const mk = (patch: Record<string, unknown>) =>
+      deserialize(JSON.stringify({ v: 1, savedAt: Date.now(), campaign: { ...newGame(), ...patch } }), gameData)
+    expect(mk({ morality: 1.5 })).toBeNull()
+    expect(mk({ choicesMade: { a: 'x' } })).toBeNull()
+    expect(mk({ choicesMade: [1, 2] })).toBeNull()
+    expect(mk({ morality: 2, choicesMade: { xuzhou_post: 1 } })).not.toBeNull()
+  })
+  it('morality/choicesMade 随 serialize 往返保持', () => {
+    const r = applyChoice(newGame(), 'xuzhou_post', 0)
+    if (!r.ok) throw new Error(r.error)
+    const c = addMorality(r.campaign, 1)
+    const back = deserialize(serialize(c), gameData)
+    expect(back!.morality).toBe(1)
+    expect(back!.choicesMade['xuzhou_post']).toBe(0)
   })
 })

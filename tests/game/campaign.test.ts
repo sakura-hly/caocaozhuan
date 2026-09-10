@@ -4,6 +4,7 @@ import {
   CAMPAIGN_BATTLES, newGame, currentBattleId,
   equipItem, unequipItem, assignItem, unassignItem,
   deployBattle, settleBattle,
+  applyChoice, addMorality, choiceMade,
 } from '../../src/game/campaign'
 import { battles } from '../../src/data/battles'
 import { assertBattleValid } from '../../src/game/bootstrap'
@@ -228,5 +229,36 @@ describe('settleBattle', () => {
     const final = { ...st, units: st.units.map((u) => (u.faction === 'enemy' ? { ...u, alive: false } : u)), finished: 'won' as const, rewards: [] }
     const r = settleBattle(c, battles.yingchuan, final, gameData)
     expect(r.campaign.progress).toBe(3)
+  })
+})
+
+describe('善恶值与抉择记录', () => {
+  it('newGame 初始 morality 0、choicesMade 空', () => {
+    const c = newGame()
+    expect(c.morality).toBe(0)
+    expect(c.choicesMade).toEqual({})
+  })
+  it('applyChoice 落选项下标且防重复；addMorality 独立叠加', () => {
+    const r1 = applyChoice(newGame(), 'xuzhou_post', 1)
+    expect(r1.ok).toBe(true)
+    if (!r1.ok) throw new Error(r1.error)
+    expect(r1.campaign.choicesMade['xuzhou_post']).toBe(1)
+    expect(r1.campaign.morality).toBe(0) // morality 不在 applyChoice 里动
+    const withDelta = addMorality(r1.campaign, -1)
+    expect(withDelta.morality).toBe(-1)
+    expect(r1.campaign.morality).toBe(0) // 原对象不可变
+    const r2 = applyChoice(r1.campaign, 'xuzhou_post', 0)
+    expect(r2.ok).toBe(false)
+    if (!r2.ok) expect(r2.error).toBeTruthy()
+  })
+  it('applyChoice 拒非法下标', () => {
+    expect(applyChoice(newGame(), 'x', -1).ok).toBe(false)
+    expect(applyChoice(newGame(), 'x', 1.5).ok).toBe(false)
+  })
+  it('choiceMade 查询：未答为 null', () => {
+    const r = applyChoice(newGame(), 'wancheng_post', 0)
+    if (!r.ok) throw new Error(r.error)
+    expect(choiceMade(r.campaign, 'wancheng_post')).toBe(0)
+    expect(choiceMade(r.campaign, 'xiapi_post')).toBeNull()
   })
 })

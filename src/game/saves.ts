@@ -60,6 +60,14 @@ function validCampaign(x: unknown, data: GameData): x is CampaignState {
     }
   }
   for (const id of c.inventory) if (typeof id !== 'string' || !Object.hasOwn(data.items, id)) return false
+  // M4 字段：M3 旧档缺省容错，显式存在则须合法（morality 整数；choicesMade 非数组对象且值为 0-9 整数）
+  if (Object.hasOwn(c, 'morality') && !Number.isInteger(c.morality)) return false
+  if (Object.hasOwn(c, 'choicesMade')) {
+    const cm: unknown = c.choicesMade
+    if (typeof cm !== 'object' || cm === null || Array.isArray(cm)) return false
+    for (const v of Object.values(cm as Record<string, unknown>))
+      if (!isFin(v) || !Number.isInteger(v) || v < 0 || v > 9) return false
+  }
   return true
 }
 
@@ -75,7 +83,14 @@ function parseEnvelope(raw: string): SaveEnvelope | null {
 
 export function deserialize(text: string, data: GameData): CampaignState | null {
   const env = parseEnvelope(text)
-  return env && validCampaign(env.campaign, data) ? env.campaign : null
+  if (!env || !validCampaign(env.campaign, data)) return null
+  const raw = env.campaign
+  // M3 旧档缺 M4 字段：补默认 0/{}（浅拷贝，不持有解析产物引用）
+  return {
+    ...raw,
+    morality: Number.isInteger(raw.morality) ? raw.morality : 0,
+    choicesMade: raw.choicesMade && typeof raw.choicesMade === 'object' ? { ...raw.choicesMade } : {},
+  }
 }
 
 export function saveSlot(st: Storage, slot: SlotKey, c: CampaignState, now: number = Date.now()): void {
