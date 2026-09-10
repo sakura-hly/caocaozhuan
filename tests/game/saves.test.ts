@@ -103,6 +103,8 @@ describe('M4 存档字段兼容', () => {
     expect(mk({ morality: 1.5 })).toBeNull()
     expect(mk({ choicesMade: { a: 'x' } })).toBeNull()
     expect(mk({ choicesMade: [1, 2] })).toBeNull()
+    expect(mk({ choicesMade: { a: 10 } })).toBeNull() // 值域上界
+    expect(mk({ choicesMade: { a: -1 } })).toBeNull() // 值域下界
     expect(mk({ morality: 2, choicesMade: { xuzhou_post: 1 } })).not.toBeNull()
   })
   it('morality/choicesMade 随 serialize 往返保持', () => {

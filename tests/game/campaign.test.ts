@@ -239,9 +239,11 @@ describe('善恶值与抉择记录', () => {
     expect(c.choicesMade).toEqual({})
   })
   it('applyChoice 落选项下标且防重复；addMorality 独立叠加', () => {
-    const r1 = applyChoice(newGame(), 'xuzhou_post', 1)
+    const before = newGame()
+    const r1 = applyChoice(before, 'xuzhou_post', 1)
     expect(r1.ok).toBe(true)
     if (!r1.ok) throw new Error(r1.error)
+    expect(before.choicesMade).toEqual({}) // 入参不可变：作答不动原对象
     expect(r1.campaign.choicesMade['xuzhou_post']).toBe(1)
     expect(r1.campaign.morality).toBe(0) // morality 不在 applyChoice 里动
     const withDelta = addMorality(r1.campaign, -1)
@@ -254,6 +256,7 @@ describe('善恶值与抉择记录', () => {
   it('applyChoice 拒非法下标', () => {
     expect(applyChoice(newGame(), 'x', -1).ok).toBe(false)
     expect(applyChoice(newGame(), 'x', 1.5).ok).toBe(false)
+    expect(applyChoice(newGame(), 'x', 10).ok).toBe(false) // 上界是独立分支
   })
   it('choiceMade 查询：未答为 null', () => {
     const r = applyChoice(newGame(), 'wancheng_post', 0)
