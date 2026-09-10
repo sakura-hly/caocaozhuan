@@ -5,8 +5,8 @@ import { battles } from '../data/battles'
 import { effectiveStats } from '../engine/internal'
 import { EXP_PER_LEVEL } from '../engine/growth'
 
-/** 战役时间轴（M3 = 前 3 场）。 */
-export const CAMPAIGN_BATTLES: readonly string[] = ['yingchuan', 'sishui', 'hulao']
+/** 战役时间轴（M4 = 全 8 战：史实序颍川→汜水→虎牢→青州→徐州→濮阳→宛城→下邳）。 */
+export const CAMPAIGN_BATTLES: readonly string[] = ['yingchuan', 'sishui', 'hulao', 'qingzhou', 'xuzhou', 'puyang', 'wancheng', 'xiapi']
 
 export interface RosterMember {
   heroId: string; level: number; exp: number

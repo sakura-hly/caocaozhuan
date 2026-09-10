@@ -2,9 +2,9 @@ import type { BattleDef } from '../../engine/types'
 import type { DialogueLine } from './shared'
 import { heroUnit, mobUnit, parseMap } from './shared'
 
-const BINGZHOU = { hp: 56, mp: 0, atk: 14, def: 10, spirit: 3, agi: 8 }  // 并州兵(步兵)——吕布旧部，守三门内侧
-const PUYANG_GONG = { hp: 46, mp: 0, atk: 14, def: 6, spirit: 4, agi: 9 } // 濮阳弓手(城头)
-const LB_YAODAO = { hp: 42, mp: 18, atk: 8, def: 6, spirit: 12, agi: 8 }  // 吕布军妖道——敌方 debuff 施法者
+const BINGZHOU = { hp: 56, mp: 0, atk: 8, def: 10, spirit: 3, agi: 8 }  // 并州兵(步兵)——吕布旧部，守三门内侧
+const PUYANG_GONG = { hp: 46, mp: 0, atk: 8, def: 6, spirit: 4, agi: 9 } // 濮阳弓手(城头)
+const LB_YAODAO = { hp: 42, mp: 18, atk: 2, def: 6, spirit: 12, agi: 8 }  // 吕布军妖道——敌方 debuff 施法者
 
 export const puyang: BattleDef = {
   id: 'puyang',
@@ -35,10 +35,10 @@ export const puyang: BattleDef = {
     heroUnit('xunyu', 'player', { x: 1, y: 6 }),
     heroUnit('guojia', 'player', { x: 3, y: 6 }), // 本关新参战——我方首个 debuff 施法者（taoist 才持 pojia/xuanyun/yaowu）
     // 敌方（濮阳城内，竖城墙 x=13 三缺口 y2/y6/y9 为三门）
-    // 吕布复战：战场内 base 覆写（虎牢为 hp66/atk21/def13）——濮阳 hp 更高 atk 更低，围城消耗战口径，非 bug；
+    // 吕布复战：战场内 base 覆写（虎牢为 hp66/atk21/def13）——hp/atk 含八连战标定下调（沿用 M3 虎牢「最小可胜值」先例）；
     // 标级 8 对齐虎牢：level 纯面板数字，同一敌将后一关不应肉眼倒退
-    heroUnit('lvbu', 'enemy', { x: 16, y: 2 }, { level: 8, base: { hp: 72, mp: 0, atk: 19, def: 12, spirit: 5, agi: 13 } }), // 城心
-    heroUnit('chengong', 'enemy', { x: 17, y: 1 }, { level: 6 }), // 城内后排，不覆写 base
+    heroUnit('lvbu', 'enemy', { x: 16, y: 2 }, { level: 8, base: { hp: 57, mp: 0, atk: 19, def: 12, spirit: 5, agi: 13 } }), // 城心
+    heroUnit('chengong', 'enemy', { x: 17, y: 1 }, { level: 6, base: { hp: 43, mp: 12, atk: 8, def: 8, spirit: 14, agi: 9 } }), // 城内后排（hp/mp 标定下调：落石仅 1 发，防 AI 自打下法术三连秒）
     // 敌方 debuff 施法者必须是 taoist 兵种：AI 的 debuff 分支按兵种放行（strategist 只治疗/攻击施法），
     // 陈宫是 strategist 不会施 debuff——引擎口径而非疏漏，故另设吕布军妖道承担 debuff
     mobUnit('d1', '吕布军妖道', 'taoist', 'enemy', { x: 16, y: 3 }, LB_YAODAO),

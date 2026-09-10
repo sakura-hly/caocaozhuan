@@ -224,11 +224,11 @@ describe('settleBattle', () => {
     expect(r.campaign.roster.find((m) => m.heroId === 'xunyu')!.level).toBe(3)
   })
   it('progress 封顶：通关进度再结算不越界', () => {
-    const c = { ...newGame(), progress: 3 }
+    const c = { ...newGame(), progress: CAMPAIGN_BATTLES.length }
     const st = initBattle(battles.yingchuan, 42)
     const final = { ...st, units: st.units.map((u) => (u.faction === 'enemy' ? { ...u, alive: false } : u)), finished: 'won' as const, rewards: [] }
     const r = settleBattle(c, battles.yingchuan, final, gameData)
-    expect(r.campaign.progress).toBe(3)
+    expect(r.campaign.progress).toBe(CAMPAIGN_BATTLES.length)
   })
 })
 

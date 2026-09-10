@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { gameData } from '../../src/data'
-import { battles } from '../../src/data/battles'
+import { battles, battleChoices } from '../../src/data/battles'
 import { assertBattleValid } from '../../src/game/bootstrap'
 import {
-  CAMPAIGN_BATTLES, newGame, currentBattleId, deployBattle, settleBattle,
+  CAMPAIGN_BATTLES, newGame, currentBattleId, deployBattle, settleBattle, applyChoice, addMorality,
 } from '../../src/game/campaign'
 import { saveSlot, loadSlot } from '../../src/game/saves'
 import type { Storage } from '../../src/game/saves'
@@ -18,7 +18,7 @@ function fakeStorage(): Storage {
   }
 }
 
-describe('战役闭环：新游戏 → 三连战 → 通关', () => {
+describe('战役闭环：新游戏 → 八连战 → 通关', () => {
   it('seed 42 全流程：零错误、全胜、进度推进、存档往返', () => {
     let c = newGame()
     const st = fakeStorage()
@@ -55,7 +55,7 @@ describe('战役闭环：新游戏 → 三连战 → 通关', () => {
 })
 
 describe('新战役自动对局（多 seed 零错误且可胜）', () => {
-  for (const id of ['sishui', 'hulao']) {
+  for (const id of ['sishui', 'hulao', 'qingzhou', 'xuzhou', 'puyang', 'wancheng', 'xiapi']) {
     it(`${id}: seeds [1,7,42,2026] 全部零错误且 won`, () => {
       for (const seed of [1, 7, 42, 2026]) {
         const r = autoPlayDef(battles[id]!, seed)
@@ -65,4 +65,33 @@ describe('新战役自动对局（多 seed 零错误且可胜）', () => {
       }
     })
   }
+})
+
+describe('战后抉择流转（八连战全流程）', () => {
+  it('三抉择全仁 → morality +3；存档往返保持', () => {
+    let c = newGame()
+    const st = fakeStorage()
+    for (const id of CAMPAIGN_BATTLES) {
+      const def = deployBattle(battles[id]!, c, gameData)
+      const r = autoPlayDef(def, 42)
+      expect(r.errors, id).toEqual([])
+      expect(r.finished, id).toBe('won')
+      c = settleBattle(c, def, r.state, gameData).campaign
+      const ch = Object.values(battleChoices).find((x) => x.battleId === id)
+      if (ch) {
+        const answered = applyChoice(c, ch.id, 0)
+        expect(answered.ok, ch.id).toBe(true)
+        if (!answered.ok) throw new Error(answered.error) // 类型收窄：vitest 不查类型，vue-tsc 需要
+        c = addMorality(answered.campaign, ch.options[0]!.morality)
+      }
+    }
+    expect(c.progress).toBe(CAMPAIGN_BATTLES.length)
+    expect(c.morality).toBe(3)
+    saveSlot(st, 'auto', c, 1)
+    const back = loadSlot(st, 'auto', gameData)
+    expect(back).toEqual(c)
+    expect(back!.choicesMade['xuzhou_post']).toBe(0)
+    expect(back!.choicesMade['wancheng_post']).toBe(0)
+    expect(back!.choicesMade['xiapi_post']).toBe(0)
+  })
 })

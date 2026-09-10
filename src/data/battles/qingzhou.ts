@@ -2,10 +2,10 @@ import type { BattleDef } from '../../engine/types'
 import type { DialogueLine } from './shared'
 import { heroUnit, mobUnit, parseMap } from './shared'
 
-const HUANGJIN = { hp: 54, mp: 0, atk: 12, def: 8, spirit: 3, agi: 7 }  // 黄巾贼(步兵)
-const HUANGJIN_GONG = { hp: 44, mp: 0, atk: 13, def: 6, spirit: 4, agi: 9 } // 黄巾弓手
-const HUANGJIN_DAO = { hp: 42, mp: 18, atk: 8, def: 6, spirit: 12, agi: 8 } // 黄巾道士（pojia/yaowu 由兵种放行）
-const QUSHUAI = { hp: 62, mp: 0, atk: 14, def: 10, spirit: 4, agi: 10 } // 黄巾渠帅(骑兵)
+const HUANGJIN = { hp: 54, mp: 0, atk: 10, def: 8, spirit: 3, agi: 7 }  // 黄巾贼(步兵)
+const HUANGJIN_GONG = { hp: 44, mp: 0, atk: 11, def: 6, spirit: 4, agi: 9 } // 黄巾弓手
+const HUANGJIN_DAO = { hp: 42, mp: 18, atk: 6, def: 6, spirit: 12, agi: 8 } // 黄巾道士（pojia/yaowu 由兵种放行）
+const QUSHUAI = { hp: 62, mp: 0, atk: 12, def: 10, spirit: 4, agi: 10 } // 黄巾渠帅(骑兵)
 
 export const qingzhou: BattleDef = {
   id: 'qingzhou',

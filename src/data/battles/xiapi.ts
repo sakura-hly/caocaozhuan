@@ -2,9 +2,9 @@ import type { BattleDef } from '../../engine/types'
 import type { DialogueLine } from './shared'
 import { heroUnit, mobUnit, parseMap } from './shared'
 
-const BINGZHOU = { hp: 58, mp: 0, atk: 15, def: 10, spirit: 3, agi: 8 }  // 并州兵(步兵)——吕布旧部终战，压过濮阳(56/14)
-const XIAPI_GONG = { hp: 46, mp: 0, atk: 14, def: 6, spirit: 4, agi: 9 } // 下邳弓手(城头)——掩护南墙缺口群（距登陆场远，压制的是破城段）
-const XP_YAODAO = { hp: 44, mp: 20, atk: 8, def: 6, spirit: 12, agi: 8 } // 下邳妖道——敌方 debuff 施法者（mp20 够破甲5/眩晕10）
+const BINGZHOU = { hp: 58, mp: 0, atk: 8, def: 10, spirit: 3, agi: 8 }  // 并州兵(步兵)——吕布旧部终战，hp 压过濮阳(56/8)
+const XIAPI_GONG = { hp: 46, mp: 0, atk: 7, def: 6, spirit: 4, agi: 9 } // 下邳弓手(城头)——掩护南墙缺口群（距登陆场远，压制的是破城段）
+const XP_YAODAO = { hp: 44, mp: 5, atk: 5, def: 6, spirit: 12, agi: 8 } // 下邳妖道——敌方 debuff 施法者（mp 标定下调：仅 1 发破甲，防 AI 自打治疗链拖死消耗）
 
 const MAX_TURNS = 24
 const FLOOD_FROM_TURN = 6 // 水淹起始回合——荀攸献策筑堤，第 6 回合决堤
@@ -38,10 +38,10 @@ export const xiapi: BattleDef = {
     heroUnit('xunyu', 'player', { x: 7, y: 10 }),
     heroUnit('xunyou', 'player', { x: 3, y: 10 }), // 本关新参战——水攻之策献计者（xp_start 首行）
     // 敌方（下邳大城：东北 C 城区，南/西水泽环城）
-    // 吕布终战：战场内 base 覆写，终章强度——hp 88 / atk 22 均压过濮阳（72/19），level 10 顺延濮阳 8；
-    // 同一敌将终战全面上调是刻意设计，非 bug
-    heroUnit('lvbu', 'enemy', { x: 15, y: 2 }, { level: 10, base: { hp: 88, mp: 0, atk: 22, def: 13, spirit: 5, agi: 13 } }), // 城心
-    heroUnit('chengong', 'enemy', { x: 13, y: 3 }, { level: 7 }), // 城内，不覆写 base
+    // 吕布终战：战场内 base 覆写，终章强度（hp/atk 含八连战标定下调——泛用 AI 无护主行为，atk 高会三合斩主公；
+    // 对齐 M3 登记的虎牢「atk 备选方案」，level 10 顺延濮阳 8）
+    heroUnit('lvbu', 'enemy', { x: 15, y: 2 }, { level: 10, base: { hp: 63, mp: 0, atk: 16, def: 13, spirit: 5, agi: 13 } }), // 城心
+    heroUnit('chengong', 'enemy', { x: 13, y: 3 }, { level: 7, base: { hp: 43, mp: 5, atk: 8, def: 8, spirit: 14, agi: 9 } }), // 城内（mp 标定下调：AI 自打不施法，防落石单体秒杀压垮 Lv1 阵容）
     // 敌方 debuff 施法者必须是 taoist 兵种：AI 的 debuff 分支按兵种放行（strategist 只治疗/攻击施法），
     // 陈宫是 strategist 不会施 debuff——引擎口径而非疏漏，故另设下邳妖道承担 debuff
     mobUnit('d1', '下邳妖道', 'taoist', 'enemy', { x: 14, y: 3 }, XP_YAODAO),

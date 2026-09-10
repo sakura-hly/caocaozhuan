@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { battleChoices } from '../../src/data/battles'
+import { battleChoices, battles } from '../../src/data/battles'
 import { gameData } from '../../src/data'
 
 describe('战后抉择注册表', () => {
@@ -35,6 +35,11 @@ describe('战后抉择注册表', () => {
     for (const ch of Object.values(battleChoices)) {
       expect(seen.has(ch.battleId), ch.battleId).toBe(false)
       seen.add(ch.battleId)
+    }
+  })
+  it('抉择挂接的战役均已注册（battleId ∈ battles）', () => {
+    for (const ch of Object.values(battleChoices)) {
+      expect(battles[ch.battleId], ch.id).toBeDefined()
     }
   })
 })
