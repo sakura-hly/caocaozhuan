@@ -3,8 +3,11 @@ import type { DialogueLine } from './shared'
 import { heroUnit, mobUnit, parseMap } from './shared'
 
 const BINGZHOU = { hp: 58, mp: 0, atk: 15, def: 10, spirit: 3, agi: 8 }  // 并州兵(步兵)——吕布旧部终战，压过濮阳(56/14)
-const XIAPI_GONG = { hp: 46, mp: 0, atk: 14, def: 6, spirit: 4, agi: 9 } // 下邳弓手(城头)——射程压制登陆场
+const XIAPI_GONG = { hp: 46, mp: 0, atk: 14, def: 6, spirit: 4, agi: 9 } // 下邳弓手(城头)——掩护南墙缺口群（距登陆场远，压制的是破城段）
 const XP_YAODAO = { hp: 44, mp: 20, atk: 8, def: 6, spirit: 12, agi: 8 } // 下邳妖道——敌方 debuff 施法者（mp20 够破甲5/眩晕10）
+
+const MAX_TURNS = 24
+const FLOOD_FROM_TURN = 6 // 水淹起始回合——荀攸献策筑堤，第 6 回合决堤
 
 export const xiapi: BattleDef = {
   id: 'xiapi',
@@ -25,7 +28,7 @@ export const xiapi: BattleDef = {
     'www...........ww....',
   ]),
   units: [
-    // 我方（西南登陆区 y10-11，bb 桥为登陆通道，落点均避开水域）
+    // 我方（西南登陆区 y10-11；外圈水未闭环、moveCost 3 可涉渡，非唯一通道——开阔推进设计，落点均避开水域）
     heroUnit('caocao', 'player', { x: 4, y: 11 }, { equipment: { weapon: 'iron_sword' }, items: ['jinchuang_yao'] }),
     heroUnit('xiaohoudun', 'player', { x: 4, y: 10 }),
     heroUnit('xiahouyuan', 'player', { x: 5, y: 10 }), // 桥上
@@ -64,22 +67,23 @@ export const xiapi: BattleDef = {
     { cell: { x: 14, y: 2 }, itemId: 'shuangtie_ji', found: false }, // 城内 C 格——双铁戟（典韦成名兵器，入城可取）
     { cell: { x: 6, y: 9 }, itemId: 'jinchuang_yao', found: false }, // 登陆桥北——桥头补给
   ],
-  drops: [], // 方天画戟虎牢已掉；赤兔/画戟处置走白门楼战后抉择（xiapi_post），本关宝物走宝物格
+  drops: [], // 方天画戟、赤兔虎牢已掉；白门楼抉择（xiapi_post）处置吕布本人非宝物，本关宝物走宝物格
   dialogues: [
     { turn: 6, dialogueId: 'xp_shuiyan' },
     { onDeathOf: 'lvbu', dialogueId: 'xp_lvbu_down' },
   ],
   weather: 'sunny',
-  // 水淹下邳演出：第 6 回合开始转雨并广播 weatherChanged——与 xp_shuiyan 台词、城东增援同回合三重奏
-  weatherScript: [{ turn: 6, weather: 'rainy' }],
+  // 水淹下邳演出：第 6 回合转雨并持续至终局——引擎按精确回合匹配，只写 turn 6 则后续落回 20% 随机漂移，
+  // 与「一城皆成泽国」台词不符；转雨时刻与 xp_shuiyan 台词、城东增援同回合三重奏
+  weatherScript: Array.from({ length: MAX_TURNS - FLOOD_FROM_TURN + 1 }, (_, i) => ({ turn: FLOOD_FROM_TURN + i, weather: 'rainy' as const })),
   win: { kind: 'killCommander', unitId: 'lvbu' },
-  maxTurns: 24,
+  maxTurns: MAX_TURNS,
 }
 
 export const xiapiDialogues: Record<string, DialogueLine[]> = {
   xp_start: [
     { speaker: '荀攸', text: '吕布锐气虽挫，犹自恃勇。下邳城坚，强攻则士卒多伤——攸观泗、沂二水皆傍城而过，若决其堤，一城皆成泽国，敌军不战自乱。' },
-    { speaker: '吕布', text: '曹贼虽众，吾有画戟赤兔，何惧之有！深沟高垒，看他能奈我何！' },
+    { speaker: '吕布', text: '曹贼虽众，吾有并州铁骑、坚城深池，何惧之有！深沟高垒，看他能奈我何！' },
     { speaker: '曹操', text: '公达之策，正合我意。传令筑堤蓄水，先困后淹，下邳之破只在指顾之间。' },
   ],
   xp_shuiyan: [
@@ -89,7 +93,7 @@ export const xiapiDialogues: Record<string, DialogueLine[]> = {
   ],
   xp_lvbu_down: [
     { speaker: '吕布', text: '缚太急，乞缓之……曹公！布今诚心归降，为公将骑兵，天下不足定也！' },
-    { speaker: '荀攸', text: '主公慎思——吕布虓虎之性，事丁原、董卓而皆弑之，留之恐养虎遗患。' },
+    { speaker: '荀攸', text: '主公慎思——吕布虓虎之性，弑丁原、董卓以博富贵，留之恐养虎遗患。' },
     { speaker: '曹操', text: '缚虎不得不急。奉先既擒，且押上白门楼，如何发落，容我三思。' },
   ],
 }

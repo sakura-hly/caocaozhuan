@@ -35,8 +35,11 @@ describe('下邳之战定义', () => {
     expect(d1!.classId).toBe('taoist')
     expect(d1!.faction).toBe('enemy')
     expect(d1!.base.mp).toBeGreaterThanOrEqual(gameData.strategies.pojia.mpCost) // mp 不够则 debuff 静默失效
-    // 水淹三重奏：turn 6 天气转雨（weatherScript），同回合城东缘增援 2 员并州兵突围演出
-    expect(xiapi.weatherScript).toEqual([{ turn: 6, weather: 'rainy' }])
+    // 水淹三重奏：turn 6 天气转雨且持续至终局（只写一条则后续随机漂移放晴），同回合台词 + 城东缘增援突围
+    expect(xiapi.weatherScript).toHaveLength(19) // turn 6..24
+    expect(xiapi.weatherScript[0]).toEqual({ turn: 6, weather: 'rainy' })
+    expect(xiapi.weatherScript.every((e) => e.weather === 'rainy' && e.turn >= 6)).toBe(true)
+    expect(xiapi.dialogues).toContainEqual({ turn: 6, dialogueId: 'xp_shuiyan' }) // 三重奏的台词腿
     expect(xiapi.reinforcements.map((r) => r.turn)).toEqual([6])
     expect(xiapi.reinforcements[0]!.entries).toHaveLength(2)
     xiapi.reinforcements[0]!.entries.forEach((e) => {
