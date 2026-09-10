@@ -26,6 +26,8 @@ describe('虎牢关之战', () => {
     const lvbu = u.find((x) => x.id === 'lvbu')!
     expect(lvbu.level).toBe(8)
     expect(lvbu.base.atk).toBeGreaterThanOrEqual(20)
+    expect(battles.hulao!.reinforcements[0]!.turn).toBe(4)
+    expect(battles.hulao!.reinforcements[0]!.entries.length).toBe(2)
   })
   it('第 2 回合有三英战吕布对话触发', () => {
     expect(battles.hulao!.dialogues).toContainEqual({ turn: 2, dialogueId: 'hl_sanying' })
