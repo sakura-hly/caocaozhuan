@@ -37,6 +37,12 @@ const defs: HeroDef[] = [
     base: { hp: 52, mp: 0, atk: 13, def: 9, spirit: 4, agi: 9 } },
   { id: 'lvbu', name: '吕布', title: '字奉先', classId: 'cavalry', portraitHue: 300,
     base: { hp: 60, mp: 0, atk: 17, def: 11, spirit: 5, agi: 12 } },
+  { id: 'taoqian', name: '陶谦', title: '字恭祖', classId: 'lord', portraitHue: 50,
+    base: { hp: 62, mp: 6, atk: 12, def: 10, spirit: 5, agi: 8 } },
+  { id: 'zhangxiu', name: '张绣', title: '北地枪王', classId: 'cavalry', portraitHue: 330,
+    base: { hp: 70, mp: 0, atk: 15, def: 11, spirit: 4, agi: 12 } },
+  { id: 'chengong', name: '陈宫', title: '字公台', classId: 'strategist', portraitHue: 140,
+    base: { hp: 48, mp: 24, atk: 8, def: 8, spirit: 14, agi: 9 } },
 ]
 
 export const heroes: Record<string, HeroDef> = Object.fromEntries(defs.map((d) => [d.id, d]))

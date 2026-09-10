@@ -7,9 +7,9 @@ import type { ClassId } from '../../src/engine/types'
 const VALID_CLASSES: ClassId[] = ['lord', 'infantry', 'cavalry', 'archer', 'strategist', 'taoist']
 
 describe('武将数据', () => {
-  it('18 名武将，id 唯一，属性为正', () => {
-    expect(Object.keys(heroes).length).toBe(18)
-    expect(new Set(Object.keys(heroes)).size).toBe(18)
+  it('21 名武将，id 唯一，属性为正', () => {
+    expect(Object.keys(heroes).length).toBe(21)
+    expect(new Set(Object.keys(heroes)).size).toBe(21)
     for (const h of Object.values(heroes)) {
       expect(VALID_CLASSES).toContain(h.classId)
       for (const [k, v] of Object.entries(h.base)) {
@@ -18,9 +18,9 @@ describe('武将数据', () => {
       }
     }
   })
-  it('君主为曹操与刘备（刘备暂不入玩家 roster）', () => {
+  it('君主为曹操/刘备/陶谦（刘备与陶谦不入玩家 roster）', () => {
     const lords = Object.values(heroes).filter((h) => h.classId === 'lord')
-    expect(lords.map((h) => h.id).sort()).toEqual(['caocao', 'liubei'])
+    expect(lords.map((h) => h.id).sort()).toEqual(['caocao', 'liubei', 'taoqian'])
   })
 })
 
@@ -34,7 +34,7 @@ describe('道具数据', () => {
     }
   })
   it('gameData 注册表完整', () => {
-    expect(Object.keys(gameData.heroes).length).toBe(18)
+    expect(Object.keys(gameData.heroes).length).toBe(21)
     expect(Object.keys(gameData.items).length).toBe(17)
   })
 })
@@ -63,4 +63,21 @@ describe('M3 新增武将与道具', () => {
     expect(it.bonuses?.atk).toBe(11)
     expect(it.allowedClasses).toEqual(['cavalry', 'lord'])
   })
+})
+
+describe('M4 敌方武将注册', () => {
+  const need: Array<[string, string, string]> = [
+    ['taoqian', '陶谦', 'lord'],
+    ['zhangxiu', '张绣', 'cavalry'],
+    ['chengong', '陈宫', 'strategist'],
+  ]
+  for (const [id, name, cls] of need) {
+    it(`${name}（${id}）已注册为 ${cls}`, () => {
+      const h = gameData.heroes[id]
+      expect(h, id).toBeDefined()
+      expect(h.name).toBe(name)
+      expect(h.classId).toBe(cls)
+      expect(Number.isFinite(h.base.hp)).toBe(true)
+    })
+  }
 })
