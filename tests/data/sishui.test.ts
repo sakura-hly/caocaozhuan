@@ -14,11 +14,18 @@ describe('注册表一致性（全部战役）', () => {
   it('每场战役都有对话注册表条目', () => {
     for (const id of Object.keys(battles)) expect(battleDialogues[id], id).toBeDefined()
   })
+  it('每场战役的对话触发 id 都有台词文本（错字会静默丢剧情，必须锁死）', () => {
+    for (const id of Object.keys(battles)) {
+      const texts = battleDialogues[id]!
+      for (const d of battles[id]!.dialogues)
+        expect(texts[d.dialogueId], `${id}: ${d.dialogueId}`).toBeDefined()
+    }
+  })
 })
 
 describe('汜水关之战', () => {
-  it('校验零 errors（含 ally 阵营与 drops）', () => {
-    expect(validateBattleDef(battles.sishui!, gameData).errors).toEqual([])
+  it('校验零 errors 零 warnings（含 ally 阵营与 drops）', () => {
+    expect(validateBattleDef(battles.sishui!, gameData)).toEqual({ errors: [], warnings: [] })
   })
   it('三阵营回合序（player/ally/enemy）', () => {
     expect(initBattle(battles.sishui!, 1).factionOrder).toEqual(['player', 'ally', 'enemy'])
