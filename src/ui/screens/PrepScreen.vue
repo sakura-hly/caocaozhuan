@@ -9,7 +9,8 @@ import type { ItemSlot } from '../../engine/types'
 const props = defineProps<{ campaign: CampaignState; battleId: string }>()
 const emit = defineEmits<{ (e: 'start', c: CampaignState): void; (e: 'back'): void }>()
 
-/** 工作副本：整备中的所有改动先落在这里，出征才上交。 */
+/** 工作副本：整备中的所有改动先落在这里，出征才上交。
+ *  campaign 为挂载期快照（同 BattleScreen 契约）：父组件换战役须重建组件，不热替换。 */
 const work = ref<CampaignState>(structuredClone(toRaw(props.campaign)))
 const selectedId = ref<string>(work.value.roster[0]?.heroId ?? '')
 const notice = ref<string | null>(null)
@@ -74,7 +75,7 @@ const consumablesInInventory = computed(() => work.value.inventory
           :class="{ active: m.heroId === selectedId }"
           @click="selectedId = m.heroId"
         >
-          <b>{{ gameData.heroes[m.heroId]?.name }}</b>
+          <b>{{ gameData.heroes[m.heroId]?.name ?? m.heroId }}</b>
           <span>{{ heroClass(m) }} Lv{{ m.level }} · 经验 {{ m.exp }}/100</span>
         </button>
       </aside>
@@ -90,7 +91,8 @@ const consumablesInInventory = computed(() => work.value.inventory
               <i v-else>（空）</i>
             </div>
             <ul>
-              <li v-for="id in candidates(selected, slot)" :key="id">
+              <!-- 道具清单用序号键：同名道具可重复（初始即有两份金创药），id 键会撞 -->
+              <li v-for="(id, i) in candidates(selected, slot)" :key="i">
                 <span>{{ itemName(id) }} <small>{{ gameData.items[id]!.desc }}</small></span>
                 <button @click="equip(selected, slot, id)">装备</button>
               </li>
@@ -100,7 +102,7 @@ const consumablesInInventory = computed(() => work.value.inventory
         <div class="items">
           <h4>携带道具（战场中可用）</h4>
           <ul>
-            <li v-for="id in selected.items" :key="id">
+            <li v-for="(id, i) in selected.items" :key="i">
               <span>{{ itemName(id) }}</span>
               <button @click="unassign(selected, id)">取回</button>
             </li>
@@ -108,7 +110,7 @@ const consumablesInInventory = computed(() => work.value.inventory
           </ul>
           <h4>仓库消耗品 → 分配给此人</h4>
           <ul>
-            <li v-for="id in consumablesInInventory" :key="id">
+            <li v-for="(id, i) in consumablesInInventory" :key="i">
               <span>{{ itemName(id) }}</span>
               <button @click="assign(selected, id)">分配</button>
             </li>
