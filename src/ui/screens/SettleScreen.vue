@@ -37,7 +37,7 @@ const itemName = (id: string) => gameData.items[id]?.name ?? id
         </ul>
       </div>
       <ChoiceBox v-if="choice" :choice="choice" @picked="(i: number) => $emit('choicePicked', i)" />
-      <button class="primary" :disabled="!!choice" @click="$emit('continue')">返回进度</button>
+      <button class="primary" :disabled="!!choice" @click="$emit('continue')">继续</button>
     </div>
   </div>
 </template>
