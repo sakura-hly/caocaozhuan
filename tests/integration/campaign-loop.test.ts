@@ -44,8 +44,9 @@ describe('战役闭环：新游戏 → 三连战 → 通关', () => {
   it('战败不推进：败北后进度停在原战场', () => {
     const c = newGame()
     const def = deployBattle(battles.yingchuan!, c, gameData)
-    // 构造必败终局：我方全灭
     const s0 = autoPlayDef(def, 42)
+    expect(s0.finished).toBe('won') // 前置真实：确系完整终局而非中盘 break
+    // 契约：settleBattle 败北分支只读 finished 标签（不改单位），won 态改标签即等价败北终局
     const lost = { ...s0.state, finished: 'lost' as const }
     const s = settleBattle(c, def, lost, gameData)
     expect(s.campaign.progress).toBe(0)

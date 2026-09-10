@@ -1,4 +1,4 @@
-import type { BattleDef, BattleState, GameEvent } from '../../src/engine/types'
+import type { BattleDef, BattleState } from '../../src/engine/types'
 import { apply } from '../../src/engine'
 import { gameData } from '../../src/data'
 import { initBattle } from '../../src/engine'
