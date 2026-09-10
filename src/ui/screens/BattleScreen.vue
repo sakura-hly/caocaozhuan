@@ -21,6 +21,7 @@ import ResultBanner from '../components/ResultBanner.vue'
 
 type MenuMode = 'none' | 'action' | 'attackPick' | 'spellPick' | 'spell' | 'item'
 
+// def/battleId 均为挂载期读取（父组件用 :key 重建来换战役，不热替换）
 const props = defineProps<{ battleId: string; def?: BattleDef }>()
 const emit = defineEmits<{ (e: 'exit'): void; (e: 'finished', finalState: BattleState): void }>()
 
@@ -392,10 +393,25 @@ function setupOrchestrator(): void {
   }, gameData, props.def)
 }
 
+/** 终局已上报标记：防「查看战果」与「返回进度」双触发重复结算。 */
+let reported = false
+
 /** 结算横幅主按钮：胜=上报终局（App 结算）；败=原地重开。 */
 function onBannerConfirm(): void {
-  if (result.value?.won && state.value) emit('finished', state.value)
+  if (result.value?.won && state.value) reportFinished()
   else restart()
+}
+
+/** 横幅「返回进度」：胜态也必须先上报（否则该胜局经验/缴获永久丢失）；败态直接退出。 */
+function onBannerExit(): void {
+  if (result.value?.won && state.value) reportFinished()
+  else emit('exit')
+}
+
+function reportFinished(): void {
+  if (reported || !state.value) return
+  reported = true
+  emit('finished', state.value)
 }
 
 function restart(): void {
@@ -481,7 +497,7 @@ onBeforeUnmount(() => {
         v-if="result"
         :won="result.won" :turn="result.turn" :rewards="[]"
         :confirm-label="result.won ? '查看战果' : '重新挑战'" exit-label="返回进度"
-        @restart="onBannerConfirm" @exit="$emit('exit')"
+        @restart="onBannerConfirm" @exit="onBannerExit"
       />
       <DialogueBox v-if="dialogueText.length && !result" :key="dialogueId!" :lines="dialogueText" @finished="onDialogueFinished" />
     </div>
