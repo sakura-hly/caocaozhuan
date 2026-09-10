@@ -60,7 +60,7 @@ describe('M3 新增武将与道具', () => {
     const it = items['fangtian_ji']
     expect(it).toBeDefined()
     expect(it.kind).toBe('weapon')
-    expect(it.bonuses?.atk).toBeGreaterThan(0)
+    expect(it.bonuses?.atk).toBe(11)
     expect(it.allowedClasses).toEqual(['cavalry', 'lord'])
   })
 })
